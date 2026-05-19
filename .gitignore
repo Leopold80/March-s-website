@@ -9,9 +9,6 @@
 *.dll
 *.pdb
 
-# Cargo lock for libraries (keep for binaries)
-# Cargo.lock
-
 # Environment
 .env
 .env.local
@@ -30,3 +27,7 @@
 
 # OS
 Thumbs.db
+
+# User content
+logs/
+media/
