@@ -161,7 +161,7 @@
                 <div class="form-group">
                     <label for="file">选择文件</label>
                     <input type="file" name="file" id="file" accept="image/*,video/*" required>
-                    <p class="help-text">支持 JPG, PNG, GIF, WEBP (照片) / MP4, WEBM, MOV (视频)</p>
+                    <p class="help-text">支持 JPG, PNG, GIF, WEBP (照片) / MP4, WEBM, MOV (视频)，最大 30GB</p>
                 </div>
                 <div class="actions">
                     <button type="submit" class="btn">上传</button>
@@ -183,6 +183,7 @@
 
             const fileInput = document.getElementById('file');
             const file = fileInput.files[0];
+            const MAX_SIZE = 30 * 1024 * 1024 * 1024; // 30GB
 
             if (!file) {
                 showMessage('未选择文件', 'error');
@@ -190,6 +191,10 @@
             }
             if (file.size === 0) {
                 showMessage('文件为空，请选择有效的文件', 'error');
+                return;
+            }
+            if (file.size > MAX_SIZE) {
+                showMessage('文件大小超过 30GB 限制', 'error');
                 return;
             }
 
@@ -200,6 +205,10 @@
                     method: 'POST',
                     body: formData
                 });
+                if (res.status === 413) {
+                    window.location.href = '/upload-error';
+                    return;
+                }
                 const data = await res.json();
                 if (res.ok) {
                     showMessage('上传成功！跳转到媒体墙...');

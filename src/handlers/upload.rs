@@ -15,6 +15,12 @@ pub async fn upload_media_page() -> Html<String> {
     Html(template.to_string())
 }
 
+pub async fn upload_error_page() -> Html<String> {
+    let template = include_str!("../../assets/error.html");
+    let html = template.replace("{{error_message}}", "文件大小超过 30GB 限制，请压缩后重新上传");
+    Html(html)
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CreateLogRequest {
     pub slug: String,
