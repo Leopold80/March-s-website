@@ -110,8 +110,8 @@ def copy_files():
     if src_service.exists():
         systemd_user_dir = Path.home() / ".config" / "systemd" / "user"
         systemd_user_dir.mkdir(parents=True, exist_ok=True)
-        dst_service = systemd_user_dir / SERVICE_NAME
-        
+        dst_service = systemd_user_dir / f"{SERVICE_NAME}.service"
+
         # 读取模板并替换占位符
         content = src_service.read_text()
         content = content.replace("/home/pi/marchs-website", str(DEPLOY_DIR))
@@ -148,10 +148,11 @@ notes_dir = "md_notes"
 def install_systemd_service():
     """安装并启用 systemd 服务"""
     print_step("安装 systemd 服务")
-    
-    # 重载 systemd 配置
-    subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
-    
+
+    # 重载 systemd 配置（必须先 reload 才能识别新服务）
+    subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+    print("✓ systemd 配置已重载")
+
     # 启用服务
     result = subprocess.run(
         ["systemctl", "--user", "enable", SERVICE_NAME],
@@ -162,7 +163,7 @@ def install_systemd_service():
         print(f"✓ 服务已启用（开机自启）")
     else:
         print(f"⚠️  启用服务失败：{result.stderr}")
-    
+
     # 启动服务
     result = subprocess.run(
         ["systemctl", "--user", "start", SERVICE_NAME],
