@@ -58,15 +58,17 @@ impl LogService {
                 let path = entry.path();
                 if path.extension().and_then(|s| s.to_str()) == Some("md") {
                     if let Some(filename) = path.file_stem().and_then(|s| s.to_str()) {
-                        if let Ok(content) = fs::read_to_string(&path) {
-                            if let Some((title, date)) = Self::parse_frontmatter(&content) {
-                                logs.push(LogMeta {
-                                    slug: filename.to_string(),
-                                    title,
-                                    date,
-                                });
-                            }
-                        }
+                        // 从文件修改时间获取日期
+                        let date = Self::get_file_date(&path);
+                        
+                        // 标题：从文件名提取，去掉日期前缀（如果有）
+                        let title = Self::extract_title_from_filename(filename);
+                        
+                        logs.push(LogMeta {
+                            slug: filename.to_string(),
+                            title,
+                            date,
+                        });
                     }
                 }
             }
@@ -74,6 +76,31 @@ impl LogService {
 
         logs.sort_by(|a, b| b.date.cmp(&a.date));
         logs
+    }
+
+    /// 从文件修改时间获取日期字符串
+    fn get_file_date(path: &PathBuf) -> String {
+        fs::metadata(path)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| {
+                let datetime: chrono::DateTime<chrono::Local> = t.into();
+                Some(datetime.format("%Y-%m-%d").to_string())
+            })
+            .unwrap_or_else(|| "未知日期".to_string())
+    }
+
+    /// 从文件名提取标题，去掉日期前缀（如 2024-01-15-）
+    fn extract_title_from_filename(filename: &str) -> String {
+        // 尝试去掉 YYYY-MM-DD- 前缀
+        let title = if filename.len() > 11 && filename.chars().nth(4) == Some('-') && filename.chars().nth(7) == Some('-') {
+            &filename[11..] // 跳过 "YYYY-MM-DD-"
+        } else {
+            filename
+        };
+        
+        // 将连字符替换为空格，使标题更易读
+        title.replace('-', " ")
     }
 
     pub fn get_log_content(&self, slug: &str) -> Option<(String, String, String)> {
@@ -84,13 +111,23 @@ impl LogService {
         }
 
         let content = fs::read_to_string(&log_path).ok()?;
-        let (title, date) = Self::parse_frontmatter(&content)?;
+        
+        // 尝试解析 frontmatter（为了向后兼容）
+        let (title, date, markdown_body) = if content.starts_with("---") {
+            // 有 frontmatter，解析它
+            let (title, date) = Self::parse_frontmatter(&content)?;
+            let body_start = content.find("---").and_then(|first| {
+                content[first + 3..].find("---").map(|second| first + second + 6)
+            }).unwrap_or(0);
+            let markdown_body = content[body_start..].to_string();
+            (title, date, markdown_body)
+        } else {
+            // 没有 frontmatter，从文件名和文件时间获取
+            let title = Self::extract_title_from_filename(slug);
+            let date = Self::get_file_date(&log_path);
+            (title, date, content)
+        };
 
-        let body_start = content.find("---").and_then(|first| {
-            content[first + 3..].find("---").map(|second| first + second + 6)
-        }).unwrap_or(0);
-
-        let markdown_body = content[body_start..].to_string();
         Some((title, date, markdown_body))
     }
 

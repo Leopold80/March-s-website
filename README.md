@@ -103,6 +103,50 @@ date: 2024-01-15
 
 ## 📋 部署
 
+### 🚀 一键部署（推荐）
+
+适合树莓派/个人服务器，自动配置 systemd 服务：
+
+```bash
+# 首次部署
+python deploy/deploy.py
+
+# 后续更新（保留 md_notes 和 media 数据）
+python deploy/deploy.py --update
+```
+
+部署后自动：
+- ✅ 编译 release 版本
+- ✅ 安装到 `~/marchs-website`
+- ✅ 配置 systemd 服务（开机自启、崩溃重启）
+- ✅ 保留用户数据目录
+
+### 服务管理
+
+```bash
+# 查看状态
+systemctl --user status marchs-website
+
+# 重启服务
+systemctl --user restart marchs-website
+
+# 查看日志
+journalctl --user -u marchs-website -f
+
+# 停止服务
+systemctl --user stop marchs-website
+```
+
+### 手动部署
+
+```bash
+# 编译
+cargo build --release
+
+# 运行
+cargo run --release
+```
+
 ### 云服务器部署
 
 如需更稳定的生产环境，可部署到阿里云/腾讯云轻量应用服务器。
