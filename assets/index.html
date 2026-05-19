@@ -1,0 +1,181 @@
+<!--
+  ============================================================================
+  林夏的个人主页 - HTML 文件
+  ============================================================================
+  
+  这是网站的前端代码，浏览器会解析它并显示给用户看
+  
+  Web 前端三要素：
+  1. HTML - 页面结构（有什么元素）    → 类比：无人机的组件清单
+  2. CSS  - 样式（长什么样）         → 类比：外观涂装/机身设计
+  3. JavaScript - 交互（怎么动）     → 类比：飞控算法（本页面暂未使用）
+  
+  ============================================================================
+-->
+
+<!DOCTYPE html>  <!-- 告诉浏览器：这是 HTML5 文档 -->
+<html lang="zh-CN">  <!-- lang="zh-CN" 表示页面内容是简体中文 -->
+
+<!-- 
+  ============================================================================
+  HEAD 部分：页面的"元信息"
+  这部分内容不会显示在页面上，但告诉浏览器如何解析页面
+  类比：无人机的配置文件（地面站能看到，但用户看不到）
+  ============================================================================
+-->
+<head>
+    <meta charset="UTF-8">  <!-- 字符编码：支持中文 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 
+      viewport 说明：
+      - 让页面在手机/平板上正确显示
+      - width=device-width：宽度等于设备屏幕宽度
+      - initial-scale=1.0：初始缩放比例 100%
+      - 类比：自适应不同尺寸的地面站屏幕
+    -->
+    <title>林夏的个人网站</title>  <!-- 浏览器标签页上显示的标题 -->
+    
+    <!-- 
+      ============================================================================
+      CSS 样式部分：定义页面"长什么样"
+      类比：无人机的外观设计规范
+      ============================================================================
+    -->
+    <style>
+        /* 
+         * CSS 语法说明：
+         * * { ... }  - 选择所有元素，应用这些样式
+         * 类似 Rust 的 match * { ... }
+         */
+        
+        /* 全局样式重置 - 消除浏览器默认边距 */
+        * {
+            margin: 0;      /* 外边距为 0 */
+            padding: 0;     /* 内边距为 0 */
+            box-sizing: border-box;  /* 计算尺寸时包含边框和内边距 */
+        }
+        
+        /* 
+         * body 是整个页面的容器
+         * 类比：无人机的机身主体
+         */
+        body {
+            min-height: 100vh;  /* 最小高度 = 100% 视口高度（铺满屏幕）*/
+            
+            /* 
+             * Flexbox 布局：让内容居中显示
+             * 类比：云台保持相机始终居中
+             */
+            display: flex;
+            align-items: center;      /* 垂直居中 */
+            justify-content: center;  /* 水平居中 */
+            
+            /* 
+             * 背景：紫色渐变
+             * linear-gradient(135deg, ...) 表示 135 度方向的线性渐变
+             * 类比：无人机的渐变涂装
+             */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            
+            /* 字体：优先使用苹果系统字体，类似 Swift UI 的字体栈 */
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        /* 
+         * .container 是一个"卡片容器"
+         * 类名前的 . 表示 CSS 类选择器
+         * 类比：无人机的任务舱模块
+         */
+        .container {
+            text-align: center;  /* 文字居中 */
+            padding: 3rem;       /* 内边距：3rem = 3 × 16px = 48px */
+            
+            /* 
+             * 毛玻璃效果（类似 iOS 的模糊透明效果）
+             * 类比：半透明的无人机外壳，能看到内部但模糊
+             */
+            background: rgba(255, 255, 255, 0.1);  /* 白色，10% 不透明度 */
+            backdrop-filter: blur(10px);            /* 背景模糊 10 像素 */
+            
+            border-radius: 20px;  /* 圆角：20 像素 */
+            
+            /* 
+             * 阴影效果
+             * 0 8px 32px：阴影偏移 0、模糊 8px、扩散 32px
+             * rgba(0,0,0,0.2)：黑色，20% 不透明度
+             * 类比：无人机悬浮时的地面阴影，增加立体感
+             */
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* h1 是一级标题（最大的标题）*/
+        h1 {
+            color: white;       /* 白色文字 */
+            font-size: 3.5rem;  /* 字号：3.5 × 16px = 56px */
+            margin-bottom: 1rem; /* 下边距：16px */
+            
+            /* 
+             * 文字阴影
+             * 类比：立体字效果
+             */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* p 是段落 */
+        p {
+            color: rgba(255, 255, 255, 0.9);  /* 白色，90% 不透明度 */
+            font-size: 1.2rem;                 /* 字号：19.2px */
+        }
+        
+        /* .emoji 是表情符号的样式 */
+        .emoji {
+            font-size: 4rem;  /* 大号表情：64px */
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+<!-- 
+  ============================================================================
+  BODY 部分：页面的"可见内容"
+  这部分会显示在浏览器中
+  类比：无人机的可见外观和指示灯
+  ============================================================================
+-->
+<body>
+    <!-- 
+      div 是"容器"元素（类似 HTML 的通用盒子）
+      class="container" 表示使用上面定义的 .container 样式
+      类比：组装一个任务舱，应用之前定义的规格
+    -->
+    <div class="container">
+        <!-- 挥手表情符号 -->
+        <div class="emoji">👋</div>
+
+        <!-- 主标题 -->
+        <h1>林夏的个人网站</h1>
+
+        <!-- 副标题/说明文字 -->
+        <p>Powered by Axum & Rust 🦀</p>
+        <!-- 🦀 是 Rust 语言的吉祥物螃蟹 -->
+
+        <!-- 日志链接 -->
+        <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center;">
+            <a href="/logs" style="color: white; text-decoration: none; border: 2px solid rgba(255,255,255,0.5); padding: 0.6rem 1.5rem; border-radius: 8px; transition: all 0.2s; display: inline-block;">
+                📝 查看日志
+            </a>
+            <a href="/media" style="color: white; text-decoration: none; border: 2px solid rgba(255,255,255,0.5); padding: 0.6rem 1.5rem; border-radius: 8px; transition: all 0.2s; display: inline-block;">
+                🖼️ 媒体墙
+            </a>
+        </div>
+    </div>
+
+    <style>
+        .container a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+        }
+    </style>
+</body>
+
+</html>
