@@ -28,15 +28,18 @@ pub async fn logs_page() -> Html<String> {
     for log in &logs {
         log_items.push_str(&format!(
             r#"<li class="log-item">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <a href="/log/{}" style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                    <a href="/log/{}" style="flex: 1; min-width: 200px;">
                         <div class="log-title">{}</div>
                         <div class="log-date">{}</div>
                     </a>
-                    <a href="/edit-log?slug={}" style="margin-left: 1rem; padding: 0.4rem 0.8rem; background: #667eea; color: white; border-radius: 6px; text-decoration: none; font-size: 0.85rem;">✏️ 编辑</a>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <a href="/edit-log?slug={}" style="padding: 0.4rem 0.8rem; background: #667eea; color: white; border-radius: 6px; text-decoration: none; font-size: 0.85rem; white-space: nowrap;">✏️ 编辑</a>
+                        <button onclick="deleteLog('{}')" style="padding: 0.4rem 0.8rem; background: #dc3545; color: white; border: none; border-radius: 6px; font-size: 0.85rem; cursor: pointer; white-space: nowrap;">🗑️ 删除</button>
+                    </div>
                 </div>
             </li>"#,
-            log.slug, log.title, log.date, log.slug
+            log.slug, log.title, log.date, log.slug, log.slug
         ));
     }
 
@@ -150,6 +153,22 @@ pub async fn update_log(
         Ok(_) => Json(ApiResponse {
             success: true,
             message: Some("Log updated".to_string()),
+            error: None,
+        }),
+        Err(e) => Json(ApiResponse {
+            success: false,
+            message: None,
+            error: Some(e),
+        }),
+    }
+}
+
+pub async fn delete_log(Path(slug): Path<String>) -> Json<ApiResponse> {
+    let service = LogService::new();
+    match service.delete_log(&slug) {
+        Ok(_) => Json(ApiResponse {
+            success: true,
+            message: Some("Log deleted".to_string()),
             error: None,
         }),
         Err(e) => Json(ApiResponse {
