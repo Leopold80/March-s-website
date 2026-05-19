@@ -22,6 +22,8 @@ pub fn create_app() -> Router {
 
 /// 启动服务器
 pub async fn start() {
+    pages::init_media();
+
     let app = create_app();
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")

@@ -6,6 +6,7 @@ use axum::{response::Html, debug_handler, extract::Path};
 use pulldown_cmark::{Parser, Options, html};
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
 
 #[debug_handler]
 pub async fn hello_page() -> Html<&'static str> {
@@ -230,6 +231,51 @@ fn not_found_page(slug: &str) -> String {
 // 媒体墙功能
 // ============================================================================
 
+fn convert_heic_to_jpg(heic_path: &PathBuf) -> Option<PathBuf> {
+    let jpg_path = heic_path.with_extension("jpg");
+
+    let status = Command::new("ffmpeg")
+        .arg("-i")
+        .arg(heic_path)
+        .arg("-y")
+        .arg(&jpg_path)
+        .output()
+        .ok()?
+        .status;
+
+    if status.success() {
+        Some(jpg_path)
+    } else {
+        None
+    }
+}
+
+fn scan_heic_files(photos_dir: &PathBuf) {
+    if !photos_dir.exists() {
+        return;
+    }
+
+    if let Ok(entries) = fs::read_dir(photos_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()).map(|e| e.to_lowercase()) == Some("heic".to_string()) {
+                println!("Converting HEIC: {:?}", path);
+                if let Some(jpg_path) = convert_heic_to_jpg(&path) {
+                    println!("Converted to: {:?}", jpg_path);
+                } else {
+                    eprintln!("Failed to convert: {:?}", path);
+                }
+            }
+        }
+    }
+}
+
+pub fn init_media() {
+    let media_dir = get_media_dir();
+    let photos_dir = media_dir.join("photos");
+    scan_heic_files(&photos_dir);
+}
+
 #[derive(Debug, Clone)]
 pub struct MediaItem {
     pub filename: String,
@@ -265,7 +311,8 @@ fn get_all_media() -> Vec<MediaItem> {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
-                    if photo_exts.contains(&ext.to_lowercase().as_str()) {
+                    let ext_lower = ext.to_lowercase();
+                    if photo_exts.contains(&ext_lower.as_str()) && ext_lower != "heic" {
                         items.push(MediaItem {
                             filename: path.file_name().unwrap().to_str().unwrap().to_string(),
                             media_type: MediaType::Photo,
