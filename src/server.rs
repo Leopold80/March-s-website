@@ -1,4 +1,4 @@
-use axum::{routing::{get, post, put, delete}, Router};
+use axum::{routing::{get, post, put, delete}, Router, extract::DefaultBodyLimit};
 use tower_http::services::ServeDir;
 
 pub fn create_app() -> Router {
@@ -7,9 +7,9 @@ pub fn create_app() -> Router {
         .route("/logs", get(crate::handlers::logs_page))
         .route("/log/{slug}", get(crate::handlers::log_post_page))
         .route("/media", get(crate::handlers::media_page))
-        .route("/upload", get(crate::handlers::upload_page))
-        .route("/edit-log", get(crate::handlers::edit_log_page))
-        .route("/api/upload/media", post(crate::handlers::upload_media))
+        .route("/write-log", get(crate::handlers::write_log_page))
+        .route("/upload-media", get(crate::handlers::upload_media_page))
+        .route("/api/upload/media", post(crate::handlers::upload_media).layer(DefaultBodyLimit::max(50 * 1024 * 1024)))
         .route("/api/logs", post(crate::handlers::create_log))
         .route("/api/logs", put(crate::handlers::update_log))
         .route("/api/logs/{slug}", delete(crate::handlers::delete_log))

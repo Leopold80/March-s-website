@@ -1,40 +1,18 @@
-use axum::{response::Html, Json};
-use axum_extra::extract::Multipart as AxumMultipart;
+use axum::{extract::Multipart, response::Html, Json};
 use serde::{Deserialize, Serialize};
-use crate::services::{MediaService, LogService};
+use crate::services::LogService;
 use crate::models::MediaType;
+use tokio::io::AsyncWriteExt;
+use futures_util::{StreamExt, TryStreamExt};
 
-pub async fn upload_page() -> Html<String> {
-    let template = include_str!("../../assets/upload.html");
+pub async fn write_log_page() -> Html<String> {
+    let template = include_str!("../../assets/write_log.html");
     Html(template.to_string())
 }
 
-use axum::extract::Query;
-
-#[derive(Debug, Deserialize)]
-pub struct EditLogQuery {
-    pub slug: Option<String>,
-}
-
-pub async fn edit_log_page(Query(query): Query<EditLogQuery>) -> Html<String> {
-    let mut template = include_str!("../../assets/edit_log.html").to_string();
-    
-    if let Some(slug) = &query.slug {
-        let service = LogService::new();
-        if let Some((title, date, content)) = service.get_log_content(slug) {
-            template = template.replace("{{slug}}", slug);
-            template = template.replace("{{title}}", &title);
-            template = template.replace("{{date}}", &date);
-            template = template.replace("{{content}}", &content);
-            return Html(template);
-        }
-    }
-    
-    template = template.replace("{{slug}}", "");
-    template = template.replace("{{title}}", "");
-    template = template.replace("{{date}}", &chrono::Local::now().format("%Y-%m-%d").to_string());
-    template = template.replace("{{content}}", "");
-    Html(template)
+pub async fn upload_media_page() -> Html<String> {
+    let template = include_str!("../../assets/upload_media.html");
+    Html(template.to_string())
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,49 +40,114 @@ pub struct ApiResponse {
     pub error: Option<String>,
 }
 
-pub async fn upload_media(mut multipart: AxumMultipart) -> Json<ApiResponse> {
-    let mut file_data: Option<(String, Vec<u8>)> = None;
+pub async fn upload_media(mut multipart: Multipart) -> Json<ApiResponse> {
+    let mut filename: Option<String> = None;
     let mut media_type_str = String::from("photo");
-    
+    let mut file_size: u64 = 0;
+
     while let Some(field) = multipart.next_field().await.ok().flatten() {
         let name = field.name().unwrap_or("");
         if name == "file" {
-            let filename = field.file_name().unwrap_or("unknown").to_string();
-            let data = field.bytes().await.unwrap_or_default().to_vec();
-            file_data = Some((filename, data));
+            let name = field.file_name().unwrap_or("unknown").to_string();
+            filename = Some(name.clone());
+
+            let mut file = match tokio::fs::File::create(&name).await {
+                Ok(f) => f,
+                Err(e) => {
+                    return Json(ApiResponse {
+                        success: false,
+                        message: None,
+                        error: Some(format!("Failed to create file: {}", e)),
+                    });
+                }
+            };
+
+            // Use axum's Multipart field directly - it's already a stream
+            let mut stream = field.into_stream();
+            while let Some(chunk) = stream.next().await {
+                match chunk {
+                    Ok(bytes) => {
+                        file_size += bytes.len() as u64;
+                        if let Err(e) = file.write_all(&bytes).await {
+                            return Json(ApiResponse {
+                                success: false,
+                                message: None,
+                                error: Some(format!("Failed to write: {}", e)),
+                            });
+                        }
+                    }
+                    Err(e) => {
+                        return Json(ApiResponse {
+                            success: false,
+                            message: None,
+                            error: Some(format!("Stream error: {}", e)),
+                        });
+                    }
+                }
+            }
+            let _ = file.flush().await;
+            println!("[DEBUG] Upload: filename={}, size={}", name, file_size);
         } else if name == "type" {
             if let Ok(text) = field.text().await {
                 media_type_str = text;
             }
         }
     }
-    
-    let Some((filename, data)) = file_data else {
+
+    let Some(filename) = filename else {
         return Json(ApiResponse {
             success: false,
             message: None,
             error: Some("No file uploaded".to_string()),
         });
     };
-    
+
+    if file_size == 0 {
+        let _ = tokio::fs::remove_file(&filename).await;
+        return Json(ApiResponse {
+            success: false,
+            message: None,
+            error: Some("Uploaded file is empty".to_string()),
+        });
+    }
+
     let media_type = match media_type_str.as_str() {
         "video" => MediaType::Video,
         _ => MediaType::Photo,
     };
-    
-    let service = MediaService::new();
-    match service.upload_media(&filename, media_type, &data) {
-        Ok(saved_name) => Json(ApiResponse {
-            success: true,
-            message: Some(format!("Uploaded: {}", saved_name)),
-            error: None,
-        }),
-        Err(e) => Json(ApiResponse {
+
+    let subdir = match media_type {
+        MediaType::Photo => "photos",
+        MediaType::Video => "videos",
+    };
+
+    let target_dir = std::path::PathBuf::from("media").join(subdir);
+    if let Err(e) = tokio::fs::create_dir_all(&target_dir).await {
+        let _ = tokio::fs::remove_file(&filename).await;
+        return Json(ApiResponse {
             success: false,
             message: None,
-            error: Some(e),
-        }),
+            error: Some(format!("Failed to create directory: {}", e)),
+        });
     }
+
+    let target_path = target_dir.join(&filename);
+    if let Err(e) = tokio::fs::rename(&filename, &target_path).await {
+        let _ = tokio::fs::remove_file(&filename).await;
+        return Json(ApiResponse {
+            success: false,
+            message: None,
+            error: Some(format!("Failed to move file: {}", e)),
+        });
+    }
+
+    println!("[DEBUG] Saved to: {}", target_path.display());
+
+    Json(ApiResponse {
+        success: true,
+        message: Some(format!("Uploaded: {}", filename)),
+        error: None,
+    })
 }
 
 pub async fn create_log(Json(req): Json<CreateLogRequest>) -> Json<ApiResponse> {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>编辑日志 - 林夏的个人网站</title>
+    <title>写日志 - 林夏的个人网站</title>
     <style>
         * {
             margin: 0;
@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 600px;
             margin: 0 auto;
         }
 
@@ -44,7 +44,7 @@
             color: white;
         }
 
-        .edit-form {
+        .form-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 12px;
             padding: 2rem;
@@ -62,7 +62,8 @@
             margin-bottom: 0.5rem;
         }
 
-        .form-group input,
+        .form-group input[type="text"],
+        .form-group input[type="date"],
         .form-group textarea {
             width: 100%;
             padding: 0.75rem;
@@ -73,7 +74,7 @@
         }
 
         .form-group textarea {
-            min-height: 400px;
+            min-height: 300px;
             resize: vertical;
         }
 
@@ -83,46 +84,29 @@
             border-color: #667eea;
         }
 
-        .form-actions {
-            display: flex;
-            gap: 1rem;
-        }
-
         .btn {
-            flex: 1;
-            padding: 0.75rem 1.5rem;
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 0.75rem 2rem;
             border: none;
             border-radius: 8px;
             font-size: 1rem;
             cursor: pointer;
+            width: 100%;
             transition: background 0.2s;
         }
 
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-primary:hover {
+        .btn:hover {
             background: #5a6fd6;
         }
 
         .btn-secondary {
             background: #888;
-            color: white;
         }
 
         .btn-secondary:hover {
             background: #777;
-        }
-
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #c82333;
         }
 
         .message {
@@ -147,34 +131,48 @@
             color: #888;
             margin-top: 0.5rem;
         }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .actions .btn {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>✏️ 编辑日志</h1>
-            <a href="/logs">← 返回日志列表</a>
+            <h1>📝 写日志</h1>
+            <a href="/">← 返回首页</a>
         </div>
-        <div class="edit-form">
+        <div class="form-container">
             <div id="message-area"></div>
-            <form id="edit-form">
-                <input type="hidden" name="slug" id="slug" value="{{slug}}">
+
+            <form id="log-form" method="POST" action="/api/logs">
+                <div class="form-group">
+                    <label for="slug">文件名 (Slug)</label>
+                    <input type="text" name="slug" id="slug" placeholder="YYYY-MM-DD-title" required>
+                    <p class="help-text">建议使用格式：2024-01-15-my-post</p>
+                </div>
                 <div class="form-group">
                     <label for="title">标题</label>
-                    <input type="text" name="title" id="title" value="{{title}}" required>
+                    <input type="text" name="title" id="title" required>
                 </div>
                 <div class="form-group">
                     <label for="date">日期</label>
-                    <input type="date" name="date" id="date" value="{{date}}" required>
+                    <input type="date" name="date" id="date" required>
                 </div>
                 <div class="form-group">
                     <label for="content">内容 (Markdown)</label>
-                    <textarea name="content" id="content" required>{{content}}</textarea>
+                    <textarea name="content" id="content" placeholder="支持 Markdown 语法..." required></textarea>
                 </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">保存更改</button>
-                    <button type="button" class="btn btn-secondary" onclick="window.location.href='/logs'">取消</button>
-                    <button type="button" class="btn btn-danger" onclick="deleteLog()">删除</button>
+                <div class="actions">
+                    <button type="submit" class="btn">保存日志</button>
+                    <a href="/logs" class="btn btn-secondary">取消</a>
                 </div>
             </form>
         </div>
@@ -187,19 +185,25 @@
             setTimeout(() => area.innerHTML = '', 3000);
         }
 
-        document.getElementById('edit-form').addEventListener('submit', async (e) => {
+        // Set default date to today
+        document.getElementById('date').valueAsDate = new Date();
+
+        document.getElementById('log-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
             try {
                 const res = await fetch('/api/logs', {
-                    method: 'PUT',
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
                 const result = await res.json();
                 if (res.ok) {
-                    showMessage('保存成功！', 'success');
+                    showMessage('保存成功！跳转到日志列表...');
+                    setTimeout(() => {
+                        window.location.href = '/logs';
+                    }, 1000);
                 } else {
                     showMessage(result.error || '保存失败', 'error');
                 }
@@ -207,25 +211,6 @@
                 showMessage('网络错误', 'error');
             }
         });
-
-        async function deleteLog() {
-            if (!confirm('确定要删除这篇日志吗？此操作不可恢复。')) return;
-            const slug = document.getElementById('slug').value;
-            try {
-                const res = await fetch('/api/logs/' + slug, {
-                    method: 'DELETE'
-                });
-                const result = await res.json();
-                if (res.ok) {
-                    showMessage('已删除', 'success');
-                    setTimeout(() => window.location.href = '/logs', 1000);
-                } else {
-                    showMessage(result.error || '删除失败', 'error');
-                }
-            } catch (err) {
-                showMessage('网络错误', 'error');
-            }
-        }
     </script>
 </body>
 </html>
