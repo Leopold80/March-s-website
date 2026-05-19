@@ -47,7 +47,9 @@ marchs-website/
 ├── src/
 │   ├── main.rs       # 入口
 │   ├── server.rs     # 路由配置
-│   └── pages.rs      # 页面处理器
+│   ├── handlers/     # HTTP 处理器
+│   ├── services/     # 业务逻辑
+│   └── models/       # 数据结构
 ├── Cargo.toml
 └── README.md
 ```
@@ -88,6 +90,11 @@ date: 2024-01-15
 | Tokio | 1 | 异步运行时 |
 | pulldown-cmark | 0.13 | Markdown 解析 |
 | tower-http | 0.6 | 静态文件服务 |
+
+## 📋 部署 TODO
+
+- [ ] 使用花生壳内网穿透暴露服务到公网
+- [ ] 将网站推送到生产环境
 
 ## 📄 License
 
