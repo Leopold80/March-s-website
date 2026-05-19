@@ -91,10 +91,35 @@ date: 2024-01-15
 | pulldown-cmark | 0.13 | Markdown 解析 |
 | tower-http | 0.6 | 静态文件服务 |
 
-## 📋 部署 TODO
+## 📋 部署
 
-- [ ] 使用花生壳内网穿透暴露服务到公网
-- [ ] 将网站推送到生产环境
+### 内网穿透方案（树莓派部署）
+
+| 方案 | 优点 | 缺点 |
+|------|------|------|
+| **花生壳** | 配置简单、无需公网 IP | 免费版带宽低 (~1Mbps)、域名随机 |
+| **Cloudflare Tunnel** | 免费、稳定、支持自定义域名 | 需要 Cloudflare 账号 |
+
+#### Cloudflare Tunnel 配置参考
+
+```bash
+# 1. 安装 cloudflared (ARM64)
+curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb
+sudo dpkg -i cloudflared.deb
+
+# 2. 创建 tunnel
+cloudflared tunnel create <name>
+
+# 3. 配置路由（替换为你的域名）
+cloudflared tunnel route web marchs.example.com http://localhost:3000
+
+# 4. 注册为服务
+cloudflared service install
+```
+
+### 云服务器部署
+
+如需更稳定的生产环境，可部署到阿里云/腾讯云轻量应用服务器。
 
 ## 📄 License
 
