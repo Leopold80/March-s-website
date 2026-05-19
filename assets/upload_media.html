@@ -176,6 +176,22 @@
             opacity: 0.6;
             pointer-events: none;
         }
+
+        .progress-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .btn-cancel {
+            background: #dc3545;
+            padding: 0.5rem 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-cancel:hover {
+            background: #c82333;
+        }
     </style>
 </head>
 <body>
@@ -209,12 +225,17 @@
                         <div class="progress-fill" id="progress-fill"></div>
                     </div>
                     <div class="progress-text" id="progress-text">上传中... 0%</div>
+                    <div class="progress-actions">
+                        <button type="button" class="btn btn-cancel" id="cancel-btn">取消上传</button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
+        let currentXhr = null;
+
         function showMessage(text, type) {
             const area = document.getElementById('message-area');
             area.innerHTML = `<div class="message ${type}">${text}</div>`;
@@ -224,7 +245,6 @@
         function updateProgress(percent) {
             const fill = document.getElementById('progress-fill');
             const text = document.getElementById('progress-text');
-            const container = document.getElementById('progress-container');
             
             fill.style.width = percent + '%';
             text.textContent = `上传中... ${percent.toFixed(1)}%`;
@@ -237,15 +257,34 @@
         function showProgress(show) {
             const container = document.getElementById('progress-container');
             const form = document.getElementById('media-form');
+            const cancelBtn = document.getElementById('cancel-btn');
             
             if (show) {
                 container.classList.add('show');
                 form.classList.add('uploading');
+                cancelBtn.disabled = false;
+                cancelBtn.textContent = '取消上传';
             } else {
                 container.classList.remove('show');
                 form.classList.remove('uploading');
             }
         }
+
+        function cancelUpload() {
+            if (currentXhr) {
+                currentXhr.abort();
+                currentXhr = null;
+                
+                const cancelBtn = document.getElementById('cancel-btn');
+                cancelBtn.disabled = true;
+                cancelBtn.textContent = '已取消';
+                
+                showProgress(false);
+                showMessage('上传已取消', 'error');
+            }
+        }
+
+        document.getElementById('cancel-btn').addEventListener('click', cancelUpload);
 
         document.getElementById('media-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -272,6 +311,7 @@
 
             try {
                 const xhr = new XMLHttpRequest();
+                currentXhr = xhr;
                 
                 xhr.upload.addEventListener('progress', (event) => {
                     if (event.lengthComputable) {
@@ -281,6 +321,8 @@
                 });
 
                 xhr.addEventListener('load', () => {
+                    currentXhr = null;
+                    
                     if (xhr.status === 413) {
                         window.location.href = '/upload-error';
                         return;
@@ -305,13 +347,20 @@
                 });
 
                 xhr.addEventListener('error', () => {
+                    currentXhr = null;
                     showProgress(false);
                     showMessage('网络错误', 'error');
+                });
+
+                xhr.addEventListener('abort', () => {
+                    currentXhr = null;
+                    // 取消后不显示错误，由 cancelUpload 处理
                 });
 
                 xhr.open('POST', '/api/upload/media');
                 xhr.send(formData);
             } catch (err) {
+                currentXhr = null;
                 showProgress(false);
                 showMessage('网络错误：' + err.message, 'error');
             }
