@@ -152,11 +152,15 @@ impl MediaService {
 
     fn convert_heic_to_jpg(&self, heic_path: &PathBuf) {
         let jpg_path = heic_path.with_extension("jpg");
-        let _ = Command::new("ffmpeg")
+        let output = Command::new("ffmpeg")
             .arg("-i")
             .arg(heic_path)
             .arg("-y")
             .arg(&jpg_path)
             .output();
+        // 转换成功后删除原 HEIC 文件
+        if output.is_ok() {
+            let _ = fs::remove_file(heic_path);
+        }
     }
 }

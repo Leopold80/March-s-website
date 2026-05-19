@@ -27,17 +27,16 @@ pub async fn logs_page() -> Html<String> {
                     </a>
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         <a href="/edit-log?slug={}" style="padding: 0.4rem 0.8rem; background: #667eea; color: white; border-radius: 6px; text-decoration: none; font-size: 0.85rem; white-space: nowrap;">✏️ 编辑</a>
-                        <button onclick="deleteLog('{}')" style="padding: 0.4rem 0.8rem; background: #dc3545; color: white; border: none; border-radius: 6px; font-size: 0.85rem; cursor: pointer; white-space: nowrap;">🗑️ 删除</button>
                     </div>
                 </div>
             </li>"#,
-            log.slug, log.title, log.date, log.slug, log.slug
+            log.slug, log.title, log.date, log.slug
         ));
     }
 
     if log_items.is_empty() {
         log_items = String::from(r#"<li style="text-align: center; color: rgba(255,255,255,0.8); padding: 2rem;">
-            暂无日志，在 <code style="background: rgba(255,255,255,0.2); padding: 0.2rem 0.5rem; border-radius: 4px;">logs/</code> 目录下创建 Markdown 文件即可
+            暂无日志，在 <code style="background: rgba(255,255,255,0.2); padding: 0.2rem 0.5rem; border-radius: 4px;">md_notes/</code> 目录下创建 Markdown 文件即可
         </li>"#);
     }
 
@@ -143,14 +142,6 @@ pub async fn update_log(
     let service = LogService::new();
     match service.update_log(&slug, &req.title, &req.date, &req.content) {
         Ok(_) => Json(ApiResponse::success("Log updated")),
-        Err(e) => Json(ApiResponse::error(e)),
-    }
-}
-
-pub async fn delete_log(Path(slug): Path<String>) -> Json<ApiResponse> {
-    let service = LogService::new();
-    match service.delete_log(&slug) {
-        Ok(_) => Json(ApiResponse::success("Log deleted")),
         Err(e) => Json(ApiResponse::error(e)),
     }
 }

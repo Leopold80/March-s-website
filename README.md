@@ -13,7 +13,7 @@
 
 ## ✨ 功能特性
 
-- 📝 **Markdown 日志** - 在 `logs/` 目录放置 Markdown 文件即可发布日志
+- 📝 **Markdown 日志** - 在 `md_notes/` 目录放置 Markdown 文件即可发布日志
 - 🖼️ **媒体墙** - 瀑布流布局展示照片和视频
 - 🎨 **响应式设计** - 适配桌面、平板、手机
 - 🚀 **高性能** - Rust 异步服务器，编译时模板嵌入
@@ -50,7 +50,7 @@ marchs-website/
 │   ├── logs.html     # 日志列表
 │   ├── log_post.html # 日志阅读
 │   └── media.html    # 媒体墙
-├── logs/             # Markdown 日志文件
+├── md_notes/         # Markdown 日志文件
 ├── media/
 │   ├── photos/       # 照片
 │   └── videos/       # 视频
@@ -68,7 +68,7 @@ marchs-website/
 
 ### 发布日志
 
-1. 在 `logs/` 目录创建 `.md` 文件
+1. 在 `md_notes/` 目录创建 `.md` 文件
 2. 文件开头添加 frontmatter：
 
 ```markdown

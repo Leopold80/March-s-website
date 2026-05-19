@@ -139,14 +139,13 @@
             flex-wrap: wrap;
         }
 
-        .media-actions button {
+        .media-actions .btn-edit {
             background: rgba(102, 126, 234, 0.8);
             color: white;
-            border: none;
             padding: 0.5rem 0.75rem;
             border-radius: 4px;
             font-size: 0.8rem;
-            cursor: pointer;
+            text-decoration: none;
             transition: background 0.2s;
             min-width: 44px;
             min-height: 44px;
@@ -156,23 +155,15 @@
         }
 
         @media (max-width: 767px) {
-            .media-actions button {
+            .media-actions .btn-edit {
                 padding: 0.6rem 0.9rem;
                 font-size: 0.85rem;
                 flex: 1 1 40%;
             }
         }
 
-        .media-actions button:hover {
+        .media-actions .btn-edit:hover {
             background: rgba(102, 126, 234, 1);
-        }
-
-        .media-actions .btn-delete {
-            background: rgba(220, 53, 69, 0.8);
-        }
-
-        .media-actions .btn-delete:hover {
-            background: rgba(220, 53, 69, 1);
         }
 
         .filename {
@@ -197,60 +188,5 @@
             {{media_items}}
         </div>
     </div>
-
-    <script>
-        async function deleteMedia(filename) {
-            if (!confirm(`确定要删除 "${filename}" 吗？此操作不可恢复。`)) {
-                return;
-            }
-
-            const item = document.querySelector(`[data-filename="${filename}"]`);
-            const mediaType = item.dataset.type;
-
-            try {
-                const res = await fetch(`/api/media/${filename}/${mediaType}`, {
-                    method: 'DELETE'
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    item.remove();
-                    alert('删除成功');
-                } else {
-                    alert('删除失败：' + (data.error || '未知错误'));
-                }
-            } catch (err) {
-                alert('网络错误：' + err.message);
-            }
-        }
-
-        async function renameMedia(filename, displayName) {
-            const newName = prompt('请输入新名称（自动保留原文件后缀）：', displayName);
-            if (!newName || newName === displayName) {
-                return;
-            }
-
-            const item = document.querySelector(`[data-filename="${filename}"]`);
-            const mediaType = item.dataset.type;
-
-            try {
-                const res = await fetch(`/api/media/${filename}/${mediaType}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ new_filename: newName, media_type: mediaType })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    alert('重命名成功');
-                    window.location.reload();
-                } else {
-                    alert('重命名失败：' + (data.error || '未知错误'));
-                }
-            } catch (err) {
-                alert('网络错误：' + err.message);
-            }
-        }
-    </script>
 </body>
 </html>

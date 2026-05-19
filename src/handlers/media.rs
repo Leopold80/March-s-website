@@ -10,6 +10,23 @@ pub struct RenameRequest {
     pub new_filename: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct EditMediaQuery {
+    pub file: String,
+    #[serde(rename = "type")]
+    pub media_type: String,
+}
+
+#[debug_handler]
+pub async fn edit_media_page(axum::extract::Query(params): axum::extract::Query<EditMediaQuery>) -> Html<String> {
+    let template = include_str!("../../assets/edit_media.html");
+    let html = template
+        .replace("{{filename}}", &params.file)
+        .replace("{{display_name}}", filename_without_ext(&params.file))
+        .replace("{{media_type}}", &params.media_type);
+    Html(html)
+}
+
 #[debug_handler]
 pub async fn media_page() -> Html<String> {
     let service = MediaService::new();
@@ -49,8 +66,7 @@ pub async fn media_page() -> Html<String> {
                     <span class="media-type">{}</span>
                     <div class="filename">{}</div>
                     <div class="media-actions">
-                        <button class="btn-rename" onclick="renameMedia('{}', '{}')">✏️ 重命名</button>
-                        <button class="btn-delete" onclick="deleteMedia('{}')">🗑️ 删除</button>
+                        <a href="/edit-media?file={}&type={}" class="btn-edit">✏️ 编辑</a>
                     </div>
                 </div>
             </div>"#,
@@ -60,8 +76,7 @@ pub async fn media_page() -> Html<String> {
             type_label,
             display_name,
             item.filename,
-            display_name,
-            item.filename
+            media_type_str
         ));
     }
 

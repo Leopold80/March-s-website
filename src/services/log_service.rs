@@ -11,7 +11,7 @@ impl LogService {
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
             .unwrap_or_else(|_| ".".to_string());
         Self {
-            logs_dir: PathBuf::from(manifest_dir).join("logs"),
+            logs_dir: PathBuf::from(manifest_dir).join("md_notes"),
         }
     }
 

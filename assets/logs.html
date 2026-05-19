@@ -122,28 +122,5 @@
             {{log_items}}
         </ul>
     </div>
-
-    <script>
-        async function deleteLog(slug) {
-            if (!confirm(`确定要删除日志 "${slug}" 吗？此操作不可恢复。`)) {
-                return;
-            }
-
-            try {
-                const res = await fetch(`/api/logs/${slug}`, {
-                    method: 'DELETE'
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    alert('删除成功');
-                    window.location.reload();
-                } else {
-                    alert('删除失败：' + (data.error || '未知错误'));
-                }
-            } catch (err) {
-                alert('网络错误：' + err.message);
-            }
-        }
-    </script>
 </body>
 </html>
