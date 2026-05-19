@@ -145,3 +145,11 @@ pub async fn update_log(
         Err(e) => Json(ApiResponse::error(e)),
     }
 }
+
+pub async fn delete_log(Path(slug): Path<String>) -> Json<ApiResponse> {
+    let service = LogService::new();
+    match service.delete_log(&slug) {
+        Ok(_) => Json(ApiResponse::success("Log deleted")),
+        Err(e) => Json(ApiResponse::error(e)),
+    }
+}

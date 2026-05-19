@@ -15,6 +15,7 @@ pub fn create_app() -> Router {
         .route("/api/upload/media", post(crate::handlers::upload_media).layer(DefaultBodyLimit::max(crate::types::UPLOAD_MAX_SIZE)))
         .route("/api/logs", post(crate::handlers::create_log))
         .route("/api/logs/{slug}", put(crate::handlers::update_log))
+        .route("/api/logs/{slug}", delete(crate::handlers::delete_log))
         .route("/api/media/{filename}/{media_type}", delete(crate::handlers::delete_media))
         .route("/api/media/{filename}/{media_type}", put(crate::handlers::rename_media))
         .nest_service("/media/photos", ServeDir::new("media/photos"))
