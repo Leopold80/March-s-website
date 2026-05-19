@@ -273,14 +273,8 @@ fn scan_heic_files(photos_dir: &PathBuf) {
 pub fn init_media() {
     // 检查 ffmpeg 是否存在
     match Command::new("ffmpeg").arg("-version").output() {
-        Ok(_) => {
-            let media_dir = get_media_dir();
-            let photos_dir = media_dir.join("photos");
-            scan_heic_files(&photos_dir);
-        }
-        Err(_) => {
-            eprintln!("⚠️  WARNING: ffmpeg not found. HEIC files will not be converted.");
-        }
+        Ok(_) => println!("ffmpeg detected, HEIC conversion enabled"),
+        Err(_) => eprintln!("⚠️  WARNING: ffmpeg not found. HEIC files will not be converted."),
     }
 }
 
@@ -315,6 +309,7 @@ fn get_all_media() -> Vec<MediaItem> {
 
     let photos_dir = media_dir.join("photos");
     if photos_dir.exists() {
+        scan_heic_files(&photos_dir);
         if let Ok(entries) = fs::read_dir(&photos_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();

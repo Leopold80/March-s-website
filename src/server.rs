@@ -23,14 +23,10 @@ pub fn create_app() -> Router {
 /// 启动服务器
 pub async fn start() {
     pages::init_media();
-
     let app = create_app();
-
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await
         .expect("Failed to bind to port 3000");
-
     println!("Server running at http://0.0.0.0:3000");
-
     axum::serve(listener, app).await.expect("Server failed");
 }
