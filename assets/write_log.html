@@ -154,17 +154,17 @@
 
             <form id="log-form" method="POST" action="/api/logs">
                 <div class="form-group">
-                    <label for="slug">文件名 (Slug)</label>
-                    <input type="text" name="slug" id="slug" placeholder="YYYY-MM-DD-title" required>
-                    <p class="help-text">建议使用格式：2024-01-15-my-post</p>
-                </div>
-                <div class="form-group">
                     <label for="title">标题</label>
                     <input type="text" name="title" id="title" required>
                 </div>
                 <div class="form-group">
                     <label for="date">日期</label>
                     <input type="date" name="date" id="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="slug">文件名 (自动生成)</label>
+                    <input type="text" name="slug" id="slug" placeholder="自动生成" readonly style="background: #f5f5f5;">
+                    <p class="help-text">格式：YYYY-MM-DD-标题拼音/英文</p>
                 </div>
                 <div class="form-group">
                     <label for="content">内容 (Markdown)</label>
@@ -185,13 +185,41 @@
             setTimeout(() => area.innerHTML = '', 3000);
         }
 
-        // Set default date to today
-        document.getElementById('date').valueAsDate = new Date();
+        // Set default date to today and generate slug
+        const dateInput = document.getElementById('date');
+        const titleInput = document.getElementById('title');
+        const slugInput = document.getElementById('slug');
+        
+        dateInput.valueAsDate = new Date();
+        
+        function generateSlug() {
+            const date = dateInput.value;
+            const title = titleInput.value.trim();
+            if (!date || !title) {
+                slugInput.value = '';
+                return;
+            }
+            // Simple slug: date + sanitized title (keep alphanumeric, convert spaces to dashes)
+            const slugPart = title
+                .toLowerCase()
+                .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
+                .replace(/^-|-$/g, '')
+                .slice(0, 50);
+            slugInput.value = `${date}-${slugPart}`;
+        }
+        
+        titleInput.addEventListener('input', generateSlug);
+        dateInput.addEventListener('change', generateSlug);
+        generateSlug();
 
         document.getElementById('log-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
+            if (!data.slug) {
+                showMessage('请填入标题以生成文件名', 'error');
+                return;
+            }
             try {
                 const res = await fetch('/api/logs', {
                     method: 'POST',
