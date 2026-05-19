@@ -9,7 +9,10 @@
 - [x] 媒体墙瀑布流布局
 - [x] HEIC 照片转 JPEG 支持
 - [x] 使用花生壳 HTTPS 内网穿透实现外网访问
-- [ ] 创建部署级的服务器软件方案（systemd 服务、Docker 等）
+- [x] 创建部署级的服务器软件方案（systemd 服务、Docker 等）
+- [x] 部署脚本和卸载脚本
+- [ ] 图片缩略图优化
+- [ ] 媒体墙分页
 
 ## ✨ 功能特性
 
@@ -121,6 +124,16 @@ python deploy/deploy.py --update
 - ✅ 配置 systemd 服务（开机自启、崩溃重启）
 - ✅ 保留用户数据目录
 
+### 🗑️ 卸载
+
+```bash
+# 完全卸载（删除所有文件和数据）
+python deploy/uninstall.py
+
+# 保留数据卸载（只删除程序，保留日志和媒体）
+python deploy/uninstall.py --keep-data
+```
+
 ### 服务管理
 
 ```bash
@@ -136,6 +149,8 @@ journalctl --user -u marchs-website -f
 # 停止服务
 systemctl --user stop marchs-website
 ```
+
+详细部署说明见 [deploy/README.md](deploy/README.md)
 
 ### 手动部署
 
