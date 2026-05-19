@@ -265,9 +265,27 @@ def main():
 ║  更新模式：{'是' if args.update else '否':<45} ║
 ╚═══════════════════════════════════════════════════════════╝
 """)
-    
+
     # 执行部署流程
     check_prerequisites()
+    
+    # 如果是更新模式，先停止服务
+    if args.update and DEPLOY_DIR.exists():
+        print_step("更新模式：停止现有服务")
+        
+        # 先检查服务是否正在运行
+        result = subprocess.run(
+            ["systemctl", "--user", "is-active", SERVICE_NAME],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.stdout.strip() == "active":
+            subprocess.run(["systemctl", "--user", "stop", SERVICE_NAME], check=True)
+            print("✓ 服务已停止")
+        else:
+            print("ℹ 服务未运行，无需停止")
+    
     build_release()
     create_deploy_directory()
     copy_files()
