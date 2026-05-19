@@ -86,7 +86,6 @@ pub async fn upload_media(mut multipart: Multipart) -> Json<ApiResponse> {
                 }
             }
             let _ = file.flush().await;
-            println!("[DEBUG] Upload: filename={}, size={}", name, file_size);
         } else if name == "type" {
             if let Ok(text) = field.text().await {
                 media_type_str = text;
@@ -140,8 +139,6 @@ pub async fn upload_media(mut multipart: Multipart) -> Json<ApiResponse> {
             error: Some(format!("Failed to move file: {}", e)),
         });
     }
-
-    println!("[DEBUG] Saved to: {}", target_path.display());
 
     Json(ApiResponse {
         success: true,

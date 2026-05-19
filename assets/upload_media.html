@@ -183,7 +183,6 @@
 
             const fileInput = document.getElementById('file');
             const file = fileInput.files[0];
-            console.log('File selected:', file ? file.name : 'none', 'Size:', file ? file.size : 'N/A');
 
             if (!file) {
                 showMessage('未选择文件', 'error');
@@ -195,27 +194,20 @@
             }
 
             const formData = new FormData(e.target);
-            console.log('FormData created, file size in FormData:', file.size);
-            
+
             try {
-                console.log('Sending request...');
                 const res = await fetch('/api/upload/media', {
                     method: 'POST',
                     body: formData
                 });
-                console.log('Response status:', res.status);
                 const data = await res.json();
-                console.log('Response:', data);
                 if (res.ok) {
                     showMessage('上传成功！跳转到媒体墙...');
-                    // 等待日志输出后再跳转
-                    await new Promise(resolve => setTimeout(resolve, 500));
                     window.location.href = '/media';
                 } else {
                     showMessage(data.error || '上传失败', 'error');
                 }
             } catch (err) {
-                console.error('Upload error:', err);
                 showMessage('网络错误：' + err.message, 'error');
             }
         });
