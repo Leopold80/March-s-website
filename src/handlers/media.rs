@@ -1,21 +1,13 @@
 use axum::{response::Html, Json, debug_handler};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use crate::services::MediaService;
 use crate::models::MediaType;
+use crate::types::ApiResponse;
+use crate::utils::filename_without_ext;
 
 #[derive(Debug, Deserialize)]
 pub struct RenameRequest {
     pub new_filename: String,
-    pub media_type: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ApiResponse {
-    pub success: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
 }
 
 #[debug_handler]
@@ -26,22 +18,28 @@ pub async fn media_page() -> Html<String> {
     let mut media_items = String::new();
     for item in &media {
         let type_label = match item.media_type {
-            crate::models::MediaType::Photo => "📷 照片",
-            crate::models::MediaType::Video => "🎬 视频",
+            MediaType::Photo => "📷 照片",
+            MediaType::Video => "🎬 视频",
         };
 
         let media_path = match item.media_type {
-            crate::models::MediaType::Photo => format!("/media/photos/{}", item.filename),
-            crate::models::MediaType::Video => format!("/media/videos/{}", item.filename),
+            MediaType::Photo => format!("/media/photos/{}", item.filename),
+            MediaType::Video => format!("/media/videos/{}", item.filename),
         };
 
         let media_element = match item.media_type {
-            crate::models::MediaType::Photo => {
+            MediaType::Photo => {
                 format!(r#"<img src="{}" alt="{}" loading="lazy">"#, media_path, item.filename)
             }
-            crate::models::MediaType::Video => {
+            MediaType::Video => {
                 format!(r#"<video src="{}" controls preload="metadata"></video>"#, media_path)
             }
+        };
+
+        let display_name = filename_without_ext(&item.filename);
+        let media_type_str = match item.media_type {
+            MediaType::Photo => "photo",
+            MediaType::Video => "video",
         };
 
         media_items.push_str(&format!(
@@ -57,26 +55,12 @@ pub async fn media_page() -> Html<String> {
                 </div>
             </div>"#,
             item.filename,
-            match item.media_type {
-                crate::models::MediaType::Photo => "photo",
-                crate::models::MediaType::Video => "video",
-            },
-            media_element, type_label, 
-            // 显示时去掉后缀
-            {
-                let path = std::path::Path::new(&item.filename);
-                path.file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or(&item.filename)
-            },
-            // 第一个参数是完整文件名（带后缀），第二个是显示名称（无后缀）
+            media_type_str,
+            media_element,
+            type_label,
+            display_name,
             item.filename,
-            {
-                let path = std::path::Path::new(&item.filename);
-                path.file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or(&item.filename)
-            },
+            display_name,
             item.filename
         ));
     }
@@ -104,16 +88,8 @@ pub async fn delete_media(
 
     let service = MediaService::new();
     match service.delete_media(&filename, media_type) {
-        Ok(_) => Json(ApiResponse {
-            success: true,
-            message: Some("Deleted".to_string()),
-            error: None,
-        }),
-        Err(e) => Json(ApiResponse {
-            success: false,
-            message: None,
-            error: Some(e),
-        }),
+        Ok(_) => Json(ApiResponse::success("Deleted")),
+        Err(e) => Json(ApiResponse::error(e)),
     }
 }
 
@@ -128,28 +104,13 @@ pub async fn rename_media(
     };
 
     // 自动保留原文件后缀
-    let old_ext = std::path::Path::new(&filename)
-        .extension()
-        .and_then(|s| s.to_str())
-        .unwrap_or("");
-    
-    let new_filename = if old_ext.is_empty() {
-        req.new_filename.clone()
-    } else {
-        format!("{}.{}", req.new_filename, old_ext)
-    };
+    let new_filename = crate::utils::file_extension(&filename)
+        .map(|ext| format!("{}.{}", req.new_filename, ext))
+        .unwrap_or(req.new_filename);
 
     let service = MediaService::new();
     match service.rename_media(&filename, &new_filename, media_type) {
-        Ok(_) => Json(ApiResponse {
-            success: true,
-            message: Some("Renamed".to_string()),
-            error: None,
-        }),
-        Err(e) => Json(ApiResponse {
-            success: false,
-            message: None,
-            error: Some(e),
-        }),
+        Ok(_) => Json(ApiResponse::success("Renamed")),
+        Err(e) => Json(ApiResponse::error(e)),
     }
 }

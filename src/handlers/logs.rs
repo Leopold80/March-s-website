@@ -1,16 +1,8 @@
 use axum::{response::Html, debug_handler, extract::Path, Json};
 use pulldown_cmark::{Parser, Options, html};
 use crate::services::LogService;
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize)]
-pub struct ApiResponse {
-    pub success: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-}
+use crate::types::ApiResponse;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateLogRequest {
@@ -150,31 +142,15 @@ pub async fn update_log(
 ) -> Json<ApiResponse> {
     let service = LogService::new();
     match service.update_log(&slug, &req.title, &req.date, &req.content) {
-        Ok(_) => Json(ApiResponse {
-            success: true,
-            message: Some("Log updated".to_string()),
-            error: None,
-        }),
-        Err(e) => Json(ApiResponse {
-            success: false,
-            message: None,
-            error: Some(e),
-        }),
+        Ok(_) => Json(ApiResponse::success("Log updated")),
+        Err(e) => Json(ApiResponse::error(e)),
     }
 }
 
 pub async fn delete_log(Path(slug): Path<String>) -> Json<ApiResponse> {
     let service = LogService::new();
     match service.delete_log(&slug) {
-        Ok(_) => Json(ApiResponse {
-            success: true,
-            message: Some("Log deleted".to_string()),
-            error: None,
-        }),
-        Err(e) => Json(ApiResponse {
-            success: false,
-            message: None,
-            error: Some(e),
-        }),
+        Ok(_) => Json(ApiResponse::success("Log deleted")),
+        Err(e) => Json(ApiResponse::error(e)),
     }
 }

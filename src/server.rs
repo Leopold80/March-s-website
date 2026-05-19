@@ -11,7 +11,7 @@ pub fn create_app() -> Router {
         .route("/edit-log", get(crate::handlers::edit_log_page))
         .route("/upload-media", get(crate::handlers::upload_media_page))
         .route("/upload-error", get(crate::handlers::upload_error_page))
-        .route("/api/upload/media", post(crate::handlers::upload_media).layer(DefaultBodyLimit::max(30 * 1024 * 1024 * 1024)))
+        .route("/api/upload/media", post(crate::handlers::upload_media).layer(DefaultBodyLimit::max(crate::types::UPLOAD_MAX_SIZE)))
         .route("/api/logs", post(crate::handlers::create_log))
         .route("/api/logs/{slug}", put(crate::handlers::update_log))
         .route("/api/logs/{slug}", delete(crate::handlers::delete_log))
