@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑日志 - 林夏的个人网站</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            body {
+                padding: 2rem;
+            }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .header a:hover {
+            color: white;
+        }
+
+        .form-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            min-height: 300px;
+            resize: vertical;
+        }
+
+        .btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #5a6fd6;
+        }
+
+        .btn-secondary {
+            background: #888;
+            margin-top: 0.5rem;
+        }
+
+        .btn-secondary:hover {
+            background: #777;
+        }
+
+        .message {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✏️ 编辑日志</h1>
+            <a href="/logs">← 返回日志列表</a>
+        </div>
+        <div class="form-container">
+            <div id="message-area"></div>
+
+            <form id="edit-form">
+                <input type="hidden" id="slug" value="{{slug}}">
+                <div class="form-group">
+                    <label for="title">标题</label>
+                    <input type="text" id="title" value="{{title}}" required>
+                </div>
+                <div class="form-group">
+                    <label for="date">日期</label>
+                    <input type="date" id="date" value="{{date}}" required>
+                </div>
+                <div class="form-group">
+                    <label for="content">内容 (Markdown)</label>
+                    <textarea id="content" required>{{content}}</textarea>
+                </div>
+                <button type="submit" class="btn">💾 保存更改</button>
+                <button type="button" class="btn btn-secondary" onclick="window.location.href='/logs'">取消</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showMessage(text, type) {
+            const area = document.getElementById('message-area');
+            area.innerHTML = `<div class="message ${type}">${text}</div>`;
+            setTimeout(() => area.innerHTML = '', 3000);
+        }
+
+        document.getElementById('edit-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const slug = document.getElementById('slug').value;
+            const title = document.getElementById('title').value;
+            const date = document.getElementById('date').value;
+            const content = document.getElementById('content').value;
+
+            try {
+                const res = await fetch(`/api/logs/${slug}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title, date, content })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showMessage('更新成功！跳转到日志页面...');
+                    setTimeout(() => {
+                        window.location.href = '/log/' + slug;
+                    }, 1000);
+                } else {
+                    showMessage(data.error || '更新失败', 'error');
+                }
+            } catch (err) {
+                showMessage('网络错误：' + err.message, 'error');
+            }
+        });
+    </script>
+</body>
+</html>

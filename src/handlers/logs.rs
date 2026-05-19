@@ -1,6 +1,23 @@
-use axum::{response::Html, debug_handler, extract::Path};
+use axum::{response::Html, debug_handler, extract::Path, Json};
 use pulldown_cmark::{Parser, Options, html};
 use crate::services::LogService;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize)]
+pub struct ApiResponse {
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateLogRequest {
+    pub title: String,
+    pub date: String,
+    pub content: String,
+}
 
 #[debug_handler]
 pub async fn logs_page() -> Html<String> {
@@ -99,4 +116,46 @@ fn not_found_page(slug: &str) -> String {
 </html>"#,
         slug
     )
+}
+
+pub async fn edit_log_page(axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>) -> Html<String> {
+    let slug = params.get("slug").map(|s| s.as_str()).unwrap_or("");
+    
+    let service = LogService::new();
+    let (title, date, content) = match service.get_log_content(slug) {
+        Some((title, date, content)) => (title, date, content),
+        None => return Html(format!(r#"<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>错误</title></head>
+<body><p>日志不存在</p><a href="/logs">返回日志列表</a></body>
+</html>"#)),
+    };
+
+    let template = include_str!("../../assets/edit_log.html");
+    let html = template
+        .replace("{{slug}}", slug)
+        .replace("{{title}}", &title)
+        .replace("{{date}}", &date)
+        .replace("{{content}}", &content);
+
+    Html(html)
+}
+
+pub async fn update_log(
+    Path(slug): Path<String>,
+    Json(req): Json<UpdateLogRequest>,
+) -> Json<ApiResponse> {
+    let service = LogService::new();
+    match service.update_log(&slug, &req.title, &req.date, &req.content) {
+        Ok(_) => Json(ApiResponse {
+            success: true,
+            message: Some("Log updated".to_string()),
+            error: None,
+        }),
+        Err(e) => Json(ApiResponse {
+            success: false,
+            message: None,
+            error: Some(e),
+        }),
+    }
 }

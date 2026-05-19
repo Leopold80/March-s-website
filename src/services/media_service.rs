@@ -66,6 +66,27 @@ impl MediaService {
         Ok(())
     }
 
+    pub fn rename_media(&self, filename: &str, new_filename: &str, media_type: MediaType) -> Result<(), String> {
+        let subdir = match media_type {
+            MediaType::Photo => "photos",
+            MediaType::Video => "videos",
+        };
+        
+        let old_path = self.media_dir.join(subdir).join(filename);
+        let new_path = self.media_dir.join(subdir).join(new_filename);
+        
+        if !old_path.exists() {
+            return Err(format!("File not found: {}", filename));
+        }
+        
+        if new_path.exists() {
+            return Err(format!("File already exists: {}", new_filename));
+        }
+        
+        fs::rename(&old_path, &new_path).map_err(|e| format!("Failed to rename: {}", e))?;
+        Ok(())
+    }
+
     pub fn get_all_media(&self) -> Vec<MediaItem> {
         let mut items = Vec::new();
 

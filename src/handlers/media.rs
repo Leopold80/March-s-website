@@ -1,5 +1,22 @@
-use axum::{response::Html, debug_handler};
+use axum::{response::Html, Json, debug_handler};
+use serde::{Deserialize, Serialize};
 use crate::services::MediaService;
+use crate::models::MediaType;
+
+#[derive(Debug, Deserialize)]
+pub struct RenameRequest {
+    pub new_filename: String,
+    pub media_type: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ApiResponse {
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
 
 #[debug_handler]
 pub async fn media_page() -> Html<String> {
@@ -28,14 +45,39 @@ pub async fn media_page() -> Html<String> {
         };
 
         media_items.push_str(&format!(
-            r#"<div class="media-item">
+            r#"<div class="media-item" data-filename="{}" data-type="{}">
                 {}
                 <div class="media-caption">
                     <span class="media-type">{}</span>
-                    <div>{}</div>
+                    <div class="filename">{}</div>
+                    <div class="media-actions">
+                        <button class="btn-rename" onclick="renameMedia('{}', '{}')">✏️ 重命名</button>
+                        <button class="btn-delete" onclick="deleteMedia('{}')">🗑️ 删除</button>
+                    </div>
                 </div>
             </div>"#,
-            media_element, type_label, item.filename
+            item.filename,
+            match item.media_type {
+                crate::models::MediaType::Photo => "photo",
+                crate::models::MediaType::Video => "video",
+            },
+            media_element, type_label, 
+            // 显示时去掉后缀
+            {
+                let path = std::path::Path::new(&item.filename);
+                path.file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or(&item.filename)
+            },
+            // 第一个参数是完整文件名（带后缀），第二个是显示名称（无后缀）
+            item.filename,
+            {
+                let path = std::path::Path::new(&item.filename);
+                path.file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or(&item.filename)
+            },
+            item.filename
         ));
     }
 
@@ -49,4 +91,65 @@ pub async fn media_page() -> Html<String> {
     let html = template.replace("{{media_items}}", &media_items);
 
     Html(html)
+}
+
+pub async fn delete_media(
+    axum::extract::Path((filename, media_type_str)): axum::extract::Path<(String, String)>,
+) -> Json<ApiResponse> {
+    let media_type = if media_type_str == "video" {
+        MediaType::Video
+    } else {
+        MediaType::Photo
+    };
+
+    let service = MediaService::new();
+    match service.delete_media(&filename, media_type) {
+        Ok(_) => Json(ApiResponse {
+            success: true,
+            message: Some("Deleted".to_string()),
+            error: None,
+        }),
+        Err(e) => Json(ApiResponse {
+            success: false,
+            message: None,
+            error: Some(e),
+        }),
+    }
+}
+
+pub async fn rename_media(
+    axum::extract::Path((filename, media_type_str)): axum::extract::Path<(String, String)>,
+    Json(req): Json<RenameRequest>,
+) -> Json<ApiResponse> {
+    let media_type = if media_type_str == "video" {
+        MediaType::Video
+    } else {
+        MediaType::Photo
+    };
+
+    // 自动保留原文件后缀
+    let old_ext = std::path::Path::new(&filename)
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
+    
+    let new_filename = if old_ext.is_empty() {
+        req.new_filename.clone()
+    } else {
+        format!("{}.{}", req.new_filename, old_ext)
+    };
+
+    let service = MediaService::new();
+    match service.rename_media(&filename, &new_filename, media_type) {
+        Ok(_) => Json(ApiResponse {
+            success: true,
+            message: Some("Renamed".to_string()),
+            error: None,
+        }),
+        Err(e) => Json(ApiResponse {
+            success: false,
+            message: None,
+            error: Some(e),
+        }),
+    }
 }
