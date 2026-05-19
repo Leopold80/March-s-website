@@ -15,6 +15,7 @@ import argparse
 from pathlib import Path
 
 # 配置
+CURRENT_USER = os.environ.get('USER', 'pi')
 DEPLOY_DIR = Path.home() / "marchs-website"
 SERVICE_NAME = "marchs-website"
 PORT = 3000
@@ -114,7 +115,7 @@ def copy_files():
         # 读取模板并替换占位符
         content = src_service.read_text()
         content = content.replace("/home/pi/marchs-website", str(DEPLOY_DIR))
-        content = content.replace("User=pi", f"User={os.environ.get('USER', 'pi')}")
+        content = content.replace("User=pi", f"User={CURRENT_USER}")
         dst_service.write_text(content)
         print(f"✓ systemd 服务 → {dst_service}")
     else:
@@ -230,14 +231,34 @@ def get_local_ip():
     except:
         return "127.0.0.1"
 
+def confirm_deployment():
+    """确认部署配置"""
+    print(f"\n部署配置:")
+    print(f"  当前用户：{CURRENT_USER}")
+    print(f"  部署目录：{DEPLOY_DIR}")
+    print(f"  服务端口：{PORT}")
+    print()
+    
+    response = input("是否继续部署？[Y/n]: ").strip().lower()
+    if response in ('', 'y', 'yes'):
+        return True
+    elif response in ('n', 'no'):
+        print("部署已取消")
+        return False
+    else:
+        return confirm_deployment()
+
 def main():
     parser = argparse.ArgumentParser(description="林夏的个人网站 - 部署脚本")
     parser.add_argument("--update", action="store_true", help="更新现有部署（保留数据）")
     args = parser.parse_args()
-    
+
     if args.update and not DEPLOY_DIR.exists():
         print("⚠️  未检测到现有部署，执行首次部署...")
-    
+
+    if not confirm_deployment():
+        sys.exit(0)
+
     print(f"""
 ╔═══════════════════════════════════════════════════════════╗
 ║           林夏的个人网站 - 部署脚本                        ║
