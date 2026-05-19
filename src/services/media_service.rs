@@ -1,5 +1,6 @@
 use crate::models::{MediaItem, MediaType};
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -20,6 +21,49 @@ impl MediaService {
             media_dir: PathBuf::from(manifest_dir).join("media"),
             ffmpeg_available,
         }
+    }
+
+    pub fn upload_media(&self, filename: &str, media_type: MediaType, data: &[u8]) -> Result<String, String> {
+        let subdir = match media_type {
+            MediaType::Photo => "photos",
+            MediaType::Video => "videos",
+        };
+        
+        let target_dir = self.media_dir.join(subdir);
+        fs::create_dir_all(&target_dir).map_err(|e| format!("Failed to create directory: {}", e))?;
+        
+        let target_path = target_dir.join(filename);
+        let mut file = fs::File::create(&target_path).map_err(|e| format!("Failed to create file: {}", e))?;
+        file.write_all(data).map_err(|e| format!("Failed to write file: {}", e))?;
+        
+        if media_type == MediaType::Photo && filename.to_lowercase().ends_with(".heic") && self.ffmpeg_available {
+            let jpg_path = target_path.with_extension("jpg");
+            let output = Command::new("ffmpeg")
+                .arg("-i")
+                .arg(&target_path)
+                .arg("-y")
+                .arg(&jpg_path)
+                .output();
+            if output.is_ok() {
+                let _ = fs::remove_file(&target_path);
+                return Ok(jpg_path.file_name().unwrap().to_str().unwrap().to_string());
+            }
+        }
+        
+        Ok(filename.to_string())
+    }
+
+    pub fn delete_media(&self, filename: &str, media_type: MediaType) -> Result<(), String> {
+        let subdir = match media_type {
+            MediaType::Photo => "photos",
+            MediaType::Video => "videos",
+        };
+        
+        let file_path = self.media_dir.join(subdir).join(filename);
+        if file_path.exists() {
+            fs::remove_file(&file_path).map_err(|e| format!("Failed to delete: {}", e))?;
+        }
+        Ok(())
     }
 
     pub fn get_all_media(&self) -> Vec<MediaItem> {

@@ -15,6 +15,37 @@ impl LogService {
         }
     }
 
+    pub fn create_log(&self, slug: &str, title: &str, date: &str, content: &str) -> Result<(), String> {
+        let log_path = self.logs_dir.join(format!("{}.md", slug));
+        if log_path.exists() {
+            return Err("Log already exists".to_string());
+        }
+        self.write_log_file(&log_path, title, date, content)
+    }
+
+    pub fn update_log(&self, slug: &str, title: &str, date: &str, content: &str) -> Result<(), String> {
+        let log_path = self.logs_dir.join(format!("{}.md", slug));
+        if !log_path.exists() {
+            return Err("Log not found".to_string());
+        }
+        self.write_log_file(&log_path, title, date, content)
+    }
+
+    pub fn delete_log(&self, slug: &str) -> Result<(), String> {
+        let log_path = self.logs_dir.join(format!("{}.md", slug));
+        if log_path.exists() {
+            fs::remove_file(&log_path).map_err(|e| format!("Failed to delete: {}", e))?;
+        }
+        Ok(())
+    }
+
+    fn write_log_file(&self, path: &PathBuf, title: &str, date: &str, content: &str) -> Result<(), String> {
+        let frontmatter = format!("---\ntitle: {}\ndate: {}\n---\n\n", title, date);
+        let full_content = format!("{}{}", frontmatter, content);
+        fs::create_dir_all(self.logs_dir.parent().unwrap()).ok();
+        fs::write(path, full_content).map_err(|e| format!("Failed to write: {}", e))
+    }
+
     pub fn get_all_logs(&self) -> Vec<LogMeta> {
         let mut logs = Vec::new();
 

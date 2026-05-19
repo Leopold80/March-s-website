@@ -11,12 +11,15 @@ pub async fn logs_page() -> Html<String> {
     for log in &logs {
         log_items.push_str(&format!(
             r#"<li class="log-item">
-                <a href="/log/{}">
-                    <div class="log-title">{}</div>
-                    <div class="log-date">{}</div>
-                </a>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="/log/{}" style="flex: 1;">
+                        <div class="log-title">{}</div>
+                        <div class="log-date">{}</div>
+                    </a>
+                    <a href="/edit-log?slug={}" style="margin-left: 1rem; padding: 0.4rem 0.8rem; background: #667eea; color: white; border-radius: 6px; text-decoration: none; font-size: 0.85rem;">✏️ 编辑</a>
+                </div>
             </li>"#,
-            log.slug, log.title, log.date
+            log.slug, log.title, log.date, log.slug
         ));
     }
 
