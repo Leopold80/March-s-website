@@ -2,12 +2,22 @@
 
 用 Rust + Axum 构建的个人网站，支持 Markdown 日志和媒体墙功能。
 
+## 📋 TODO
+
+- [x] 基础网站功能（首页、日志、媒体墙）
+- [x] Markdown 日志支持
+- [x] 媒体墙瀑布流布局
+- [x] HEIC 照片转 JPEG 支持
+- [x] 使用花生壳内网穿透实现外网访问
+- [ ] 研究安全问题（HTTPS、访问控制、防攻击等）
+
 ## ✨ 功能特性
 
 - 📝 **Markdown 日志** - 在 `logs/` 目录放置 Markdown 文件即可发布日志
 - 🖼️ **媒体墙** - 瀑布流布局展示照片和视频
 - 🎨 **响应式设计** - 适配桌面、平板、手机
 - 🚀 **高性能** - Rust 异步服务器，编译时模板嵌入
+- 🌐 **内网穿透** - 已配置花生壳，支持外网访问
 
 ## 🚀 快速开始
 
@@ -92,30 +102,6 @@ date: 2024-01-15
 | tower-http | 0.6 | 静态文件服务 |
 
 ## 📋 部署
-
-### 内网穿透方案（树莓派部署）
-
-| 方案 | 优点 | 缺点 |
-|------|------|------|
-| **花生壳** | 配置简单、无需公网 IP | 免费版带宽低 (~1Mbps)、域名随机 |
-| **Cloudflare Tunnel** | 免费、稳定、支持自定义域名 | 需要 Cloudflare 账号 |
-
-#### Cloudflare Tunnel 配置参考
-
-```bash
-# 1. 安装 cloudflared (ARM64)
-curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb
-sudo dpkg -i cloudflared.deb
-
-# 2. 创建 tunnel
-cloudflared tunnel create <name>
-
-# 3. 配置路由（替换为你的域名）
-cloudflared tunnel route web marchs.example.com http://localhost:3000
-
-# 4. 注册为服务
-cloudflared service install
-```
 
 ### 云服务器部署
 
