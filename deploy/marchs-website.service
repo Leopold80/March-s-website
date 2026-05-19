@@ -4,9 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/marchs-website
-ExecStart=/home/pi/marchs-website/bin/marchs-website
+WorkingDirectory=%h/marchs-website
+ExecStart=%h/marchs-website/bin/marchs-website
 Restart=always
 RestartSec=5
 

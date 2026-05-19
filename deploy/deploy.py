@@ -105,18 +105,15 @@ def copy_files():
         shutil.copytree(src_assets, dst_assets)
         print(f"✓ assets → {dst_assets}")
     
-    # 复制 systemd 服务文件（替换占位符）
+    # 复制 systemd 服务文件
     src_service = Path("deploy/marchs-website.service")
     if src_service.exists():
         systemd_user_dir = Path.home() / ".config" / "systemd" / "user"
         systemd_user_dir.mkdir(parents=True, exist_ok=True)
         dst_service = systemd_user_dir / f"{SERVICE_NAME}.service"
 
-        # 读取模板并替换占位符
-        content = src_service.read_text()
-        content = content.replace("/home/pi/marchs-website", str(DEPLOY_DIR))
-        content = content.replace("User=pi", f"User={CURRENT_USER}")
-        dst_service.write_text(content)
+        # 直接复制服务文件（使用 %h 占位符，自动适配用户主目录）
+        shutil.copy2(src_service, dst_service)
         print(f"✓ systemd 服务 → {dst_service}")
     else:
         print("⚠️  未找到 systemd 服务模板")
