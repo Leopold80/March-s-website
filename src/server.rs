@@ -12,6 +12,9 @@ pub fn create_app() -> Router {
         .route("/edit-media", get(crate::handlers::edit_media_page))
         .route("/upload-media", get(crate::handlers::upload_media_page))
         .route("/upload-error", get(crate::handlers::upload_error_page))
+        .route("/view/{media_type}/{filename}", get(crate::handlers::view_media_page))
+        .route("/thumbnail/{filename}", get(crate::handlers::get_thumbnail))
+        .route("/video-poster/{filename}", get(crate::handlers::get_video_poster))
         .route("/api/upload/media", post(crate::handlers::upload_media).layer(DefaultBodyLimit::max(crate::types::UPLOAD_MAX_SIZE)))
         .route("/api/logs", post(crate::handlers::create_log))
         .route("/api/logs/{slug}", put(crate::handlers::update_log))
@@ -20,6 +23,7 @@ pub fn create_app() -> Router {
         .route("/api/media/{filename}/{media_type}", put(crate::handlers::rename_media))
         .nest_service("/media/photos", ServeDir::new("media/photos"))
         .nest_service("/media/videos", ServeDir::new("media/videos"))
+        .nest_service("/media/cache", ServeDir::new("media/cache"))
 }
 
 pub async fn start() {

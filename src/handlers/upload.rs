@@ -1,9 +1,8 @@
 use axum::{extract::Multipart, response::Html, Json};
 use serde::Deserialize;
-use crate::services::LogService;
+use crate::services::{LogService, MediaService};
 use crate::models::MediaType;
 use crate::types::ApiResponse;
-use tokio::io::AsyncWriteExt;
 use futures_util::{StreamExt, TryStreamExt};
 
 pub async fn write_log_page() -> Html<String> {
@@ -36,7 +35,7 @@ pub struct CreateLogRequest {
 pub async fn upload_media(mut multipart: Multipart) -> Json<ApiResponse> {
     let mut filename: Option<String> = None;
     let mut media_type_str = String::from("photo");
-    let mut file_size: u64 = 0;
+    let mut file_data: Vec<u8> = Vec::new();
 
     while let Some(field) = multipart.next_field().await.ok().flatten() {
         let name = field.name().unwrap_or("");
@@ -44,28 +43,17 @@ pub async fn upload_media(mut multipart: Multipart) -> Json<ApiResponse> {
             let name = field.file_name().unwrap_or("unknown").to_string();
             filename = Some(name.clone());
 
-            let mut file = match tokio::fs::File::create(&name).await {
-                Ok(f) => f,
-                Err(e) => {
-                    return Json(ApiResponse::error(format!("Failed to create file: {}", e)));
-                }
-            };
-
             let mut stream = field.into_stream();
             while let Some(chunk) = stream.next().await {
                 match chunk {
                     Ok(bytes) => {
-                        file_size += bytes.len() as u64;
-                        if let Err(e) = file.write_all(&bytes).await {
-                            return Json(ApiResponse::error(format!("Failed to write: {}", e)));
-                        }
+                        file_data.extend_from_slice(&bytes);
                     }
                     Err(e) => {
                         return Json(ApiResponse::error(format!("Stream error: {}", e)));
                     }
                 }
             }
-            let _ = file.flush().await;
         } else if name == "type" {
             if let Ok(text) = field.text().await {
                 media_type_str = text;
@@ -77,8 +65,7 @@ pub async fn upload_media(mut multipart: Multipart) -> Json<ApiResponse> {
         return Json(ApiResponse::error("No file uploaded"));
     };
 
-    if file_size == 0 {
-        let _ = tokio::fs::remove_file(&filename).await;
+    if file_data.is_empty() {
         return Json(ApiResponse::error("Uploaded file is empty"));
     }
 
@@ -87,24 +74,11 @@ pub async fn upload_media(mut multipart: Multipart) -> Json<ApiResponse> {
         _ => MediaType::Photo,
     };
 
-    let subdir = match media_type {
-        MediaType::Photo => "photos",
-        MediaType::Video => "videos",
-    };
-
-    let target_dir = std::path::PathBuf::from("media").join(subdir);
-    if let Err(e) = tokio::fs::create_dir_all(&target_dir).await {
-        let _ = tokio::fs::remove_file(&filename).await;
-        return Json(ApiResponse::error(format!("Failed to create directory: {}", e)));
+    let service = MediaService::new();
+    match service.upload_media(&filename, media_type, &file_data) {
+        Ok(final_filename) => Json(ApiResponse::success(format!("Uploaded: {}", final_filename))),
+        Err(e) => Json(ApiResponse::error(e)),
     }
-
-    let target_path = target_dir.join(&filename);
-    if let Err(e) = tokio::fs::rename(&filename, &target_path).await {
-        let _ = tokio::fs::remove_file(&filename).await;
-        return Json(ApiResponse::error(format!("Failed to move file: {}", e)));
-    }
-
-    Json(ApiResponse::success(format!("Uploaded: {}", filename)))
 }
 
 pub async fn create_log(Json(req): Json<CreateLogRequest>) -> Json<ApiResponse> {

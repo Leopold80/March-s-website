@@ -10,18 +10,20 @@ Build and maintain a personal website using Rust + Axum with Markdown blog funct
 - **Async Runtime**: Tokio
 - **Markdown Parsing**: pulldown-cmark 0.13
 - **Static Files**: tower-http 0.6 `ServeDir`
-- **Deployment**: Raspberry Pi with 内网穿透 (tunneling)
+- **Deployment**: Raspberry Pi (user: `cat`) with systemd user services
 
 ### Architecture Decisions
 - HTML templates use `include_str!()` for compile-time embedding
 - Media files served via `ServeDir` at runtime (supports large files)
-- File-based storage (no database): `logs/` for Markdown, `media/photos/` and `media/videos/` for media
+- File-based storage (no database): `md_notes/` for Markdown, `media/photos/` and `media/videos/` for media
 - On-demand scanning: new content appears immediately without recompilation
+- **Upload limit**: 30GB (configured via `DefaultBodyLimit::max(30 * 1024 * 1024 * 1024)`)
 
 ### Critical Configuration
-- **Upload limit**: 30GB (configured via `DefaultBodyLimit::max(30 * 1024 * 1024 * 1024)`)
-- **Default axum multipart limit is 2MB** - must explicitly increase for large file uploads
-- Server listens on `0.0.0.0:3000`
+- **systemd service**: User-level service (`~/.config/systemd/user/marchs-website.service`)
+- **Service file**: Uses `%h` placeholder for home directory (no hardcoded paths)
+- **No `User=` directive** in user services (causes error 216/GROUP)
+- **Gitignore**: `md_notes/` and `media/` are ignored (user content)
 
 ### User Preferences
 - Concise code without verbose comments or analogies
@@ -35,6 +37,23 @@ cargo run              # Development mode
 cargo build --release  # Production build
 ```
 
+### Deployment Commands
+```bash
+# First deploy
+python deploy/deploy.py
+
+# Update (preserves data)
+python deploy/deploy.py --update
+
+# Uninstall (keep data)
+python deploy/uninstall.py --keep-data
+
+# Service management
+systemctl --user status marchs-website
+systemctl --user restart marchs-website
+journalctl --user -u marchs-website -f
+```
+
 ### Routes
 | Path | Method | Description |
 |------|--------|-------------|
@@ -45,61 +64,77 @@ cargo build --release  # Production build
 | `/media` | GET | Media wall |
 | `/upload-media` | GET | Upload page |
 | `/api/upload/media` | POST | Upload handler (30GB limit) |
-| `/api/logs` | POST/PUT | Create/Update log |
-| `/api/logs/{slug}` | PUT/DELETE | Update/Delete log |
+| `/api/logs` | POST | Create log |
+| `/api/logs/{slug}` | PUT | Update log |
+| `/api/logs/{slug}` | DELETE | Delete log |
 | `/api/media/{filename}/{type}` | PUT/DELETE | Rename/Delete media |
 
 ## Recent Actions
 
-### Upload Functionality Fixes
-- **Discovered**: PNG files not displaying → root cause was empty test files in Trash
-- **Discovered**: Large file uploads failing silently → axum's default 2MB multipart body limit
-- **Fixed**: Increased upload limit to 30GB with `DefaultBodyLimit` layer
-- **Added**: Error page (`/upload-error`) for upload limit exceeded
-- **Added**: Frontend validation with clear error messages
+### v0.1.0 Release
+- Created git tag `v0.1.0` marking basic feature completeness
+- All core functionality implemented and tested
 
-### Media Management Features
-- **Added**: Delete button with confirmation dialog for each media item
-- **Added**: Rename functionality that auto-preserves file extensions
-- **Improved**: UI displays filenames without extensions (e.g., "藤原豆腐店" instead of "藤原豆腐店.jpg")
-- **Optimized**: Mobile-responsive layout (2 columns on mobile, 3-4 on desktop)
-- **Fixed**: `renameMedia()` parameter order bug (was passing display name as filename)
+### Upload Progress Bar
+- Added real-time progress bar for media uploads
+- Uses `XMLHttpRequest` instead of `fetch` for progress events
+- Gradient progress bar with percentage display
+- Upload success redirects to media wall
 
-### Log Editing Features
-- **Added**: `/edit-log` page for editing existing logs
-- **Added**: `PUT /api/logs/{slug}` endpoint for updates
-- **Created**: `assets/edit_log.html` template with mobile-friendly form
-- **Fixed**: Route registration and handler exports
+### Cancel Upload Feature
+- Added cancel button during upload
+- Fixed CSS `pointer-events` issue (cancel button was unclickable)
+- `xhr.abort()` cancels the upload gracefully
 
-### Code Cleanup
-- Removed debug `println!` statements from upload handler
-- Removed console.log statements from frontend
-- Removed unnecessary delay in upload success redirect
+### Delete Log API
+- Added `DELETE /api/logs/{slug}` endpoint
+- Created `delete_log` handler in `src/handlers/logs.rs`
+- Frontend already had delete button in edit page
 
-### Git Configuration
-- Set global git user: `Leopold <1261763982@qq.com>`
-- All changes committed and pushed to `github.com:Leopold80/March-s-website.git`
+### Gitignore Fix
+- Changed `logs/` to `md_notes/` (actual directory name)
+
+### Deployment Script Fixes
+- **systemd service file extension**: Added `.service` suffix
+- **Removed `User=` directive**: Causes error 216/GROUP in user services
+- **Use `%h` placeholder**: Auto-expands to user home directory
+- **Update mode**: Stop service before overwriting binary
+- **Pre-stop check**: Only stop if service is actually running
+
+### Uninstall Script
+- Created `deploy/uninstall.py`
+- Options: full uninstall or `--keep-data` (preserves `md_notes/` and `media/`)
+- Stops service, disables auto-start, removes service file, deletes deployment directory
 
 ## Current Plan
 
-1. [DONE] Fix large file upload issue (30GB limit)
-2. [DONE] Add media delete functionality
-3. [DONE] Add media rename with extension preservation
-4. [DONE] Make media wall mobile-friendly
-5. [DONE] Add log editing functionality
-6. [DONE] Clean up debug logging
-7. [TODO] Test HEIC conversion on Raspberry Pi
-8. [TODO] Add pagination for media wall (if many files)
-9. [TODO] Consider adding image thumbnails for faster loading
+1. [DONE] Basic website functionality (homepage, logs, media wall)
+2. [DONE] Markdown log support with frontmatter
+3. [DONE] Media wall waterfall layout
+4. [DONE] HEIC photo to JPEG conversion
+5. [DONE] systemd service deployment
+6. [DONE] Deploy and uninstall scripts
+7. [DONE] Upload progress bar
+8. [DONE] Cancel upload functionality
+9. [DONE] Delete log API endpoint
+10. [DONE] Git tag v0.1.0
+11. [TODO] Image thumbnails for faster loading
+12. [TODO] Media wall pagination
+13. [TODO] Test HEIC conversion on Raspberry Pi
 
 ## Open Issues / Notes
 
-- `MediaService::upload_media()` and `delete_media()` methods are now unused (dead code warning) - consider removal
-- Log edit page currently requires slug in query params; could be cleaner with path parameter
-- MOV video format may have compatibility issues on some browsers (MP4 preferred)
-- Local IP for testing: `192.168.170.131:3000` (changes per network)
+- **MOV video format**: May have compatibility issues on some browsers (MP4 preferred)
+- **Local testing IP**: Changes per network (check with `hostname -I`)
+- **Remote repository**: `git@github.com:Leopold80/March-s-website.git`
+- **Deployment directory**: `~/marchs-website` (auto-detected from current user)
+- **Data directories preserved during update**: `md_notes/`, `media/photos/`, `media/videos/`
+
+## Summary Metadata
+**Update time**: 2026-05-20
+**Version**: v0.1.0
 
 ---
 
 ## Summary Metadata
-**Update time**: 2026-05-19T15:11:55.315Z 
+**Update time**: 2026-05-19T17:16:39.950Z 

@@ -1,4 +1,6 @@
-use axum::{response::Html, Json, debug_handler};
+use axum::{response::Html, Json, debug_handler, body::Body, http::{StatusCode, header}};
+use axum::response::Response;
+use bytes::Bytes;
 use serde::Deserialize;
 use crate::services::MediaService;
 use crate::models::MediaType;
@@ -39,17 +41,22 @@ pub async fn media_page() -> Html<String> {
             MediaType::Video => "🎬 视频",
         };
 
-        let media_path = match item.media_type {
-            MediaType::Photo => format!("/media/photos/{}", item.filename),
-            MediaType::Video => format!("/media/videos/{}", item.filename),
-        };
+        let view_link = format!("/view/{}/{}",
+            match item.media_type {
+                MediaType::Photo => "photo",
+                MediaType::Video => "video",
+            },
+            item.filename
+        );
 
         let media_element = match item.media_type {
             MediaType::Photo => {
-                format!(r#"<img src="{}" alt="{}" loading="lazy">"#, media_path, item.filename)
+                let thumb_path = format!("/thumbnail/{}", item.filename);
+                format!(r#"<a href="{}"><img src="{}" alt="{}" loading="lazy"></a>"#, view_link, thumb_path, item.filename)
             }
             MediaType::Video => {
-                format!(r#"<video src="{}" controls preload="metadata"></video>"#, media_path)
+                let poster_path = format!("/video-poster/{}", item.filename);
+                format!(r#"<a href="{}"><img src="{}" alt="{}" loading="lazy"></a>"#, view_link, poster_path, item.filename)
             }
         };
 
@@ -118,7 +125,6 @@ pub async fn rename_media(
         MediaType::Photo
     };
 
-    // 自动保留原文件后缀
     let new_filename = crate::utils::file_extension(&filename)
         .map(|ext| format!("{}.{}", req.new_filename, ext))
         .unwrap_or(req.new_filename);
@@ -128,4 +134,87 @@ pub async fn rename_media(
         Ok(_) => Json(ApiResponse::success("Renamed")),
         Err(e) => Json(ApiResponse::error(e)),
     }
+}
+
+pub async fn get_thumbnail(axum::extract::Path(filename): axum::extract::Path<String>) -> Result<Response<Body>, (StatusCode, String)> {
+    let service = MediaService::new();
+    let source_path = service.get_photo_path(&filename);
+    
+    if !source_path.exists() {
+        return Err((StatusCode::NOT_FOUND, "File not found".to_string()));
+    }
+
+    let _thumb_filename = match service.generate_thumbnail(&source_path, &filename) {
+        Ok(name) => name,
+        Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+    };
+
+    let thumb_path = service.get_thumbnail_path(&filename);
+    
+    match tokio::fs::read(&thumb_path).await {
+        Ok(data) => {
+            let mut response = Response::new(Body::from(Bytes::from(data)));
+            response.headers_mut().insert(header::CONTENT_TYPE, "image/jpeg".parse().unwrap());
+            response.headers_mut().insert(header::CACHE_CONTROL, "public, max-age=31536000".parse().unwrap());
+            Ok(response)
+        }
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
+    }
+}
+
+pub async fn get_video_poster(axum::extract::Path(filename): axum::extract::Path<String>) -> Result<Response<Body>, (StatusCode, String)> {
+    let service = MediaService::new();
+    let source_path = service.get_video_path(&filename);
+
+    if !source_path.exists() {
+        return Err((StatusCode::NOT_FOUND, "File not found".to_string()));
+    }
+
+    let _poster_filename = match service.generate_video_poster(&source_path, &filename) {
+        Ok(name) => name,
+        Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+    };
+
+    let poster_path = service.get_video_poster_path(&filename);
+
+    match tokio::fs::read(&poster_path).await {
+        Ok(data) => {
+            let mut response = Response::new(Body::from(Bytes::from(data)));
+            response.headers_mut().insert(header::CONTENT_TYPE, "image/jpeg".parse().unwrap());
+            response.headers_mut().insert(header::CACHE_CONTROL, "public, max-age=31536000".parse().unwrap());
+            Ok(response)
+        }
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
+    }
+}
+
+#[debug_handler]
+pub async fn view_media_page(
+    axum::extract::Path((media_type, filename)): axum::extract::Path<(String, String)>,
+) -> Html<String> {
+    let template = include_str!("../../assets/view_media.html");
+    
+    let media_url = match media_type.as_str() {
+        "photo" => format!("/media/photos/{}", filename),
+        "video" => format!("/media/videos/{}", filename),
+        _ => return Html("Invalid media type".to_string()),
+    };
+    
+    let media_content = match media_type.as_str() {
+        "photo" => format!(r#"<div class="media-wrapper"><img src="{}" alt="{}"></div>"#, media_url, filename),
+        "video" => format!(r#"<div class="media-wrapper"><video src="{}" controls preload="metadata"></video></div>"#, media_url),
+        _ => String::new(),
+    };
+    
+    let html = template
+        .replace("{{media_url}}", &media_url)
+        .replace("{{filename}}", &filename)
+        .replace("{{media_type}}", &match media_type.as_str() {
+            "photo" => "📷 照片",
+            "video" => "🎬 视频",
+            _ => "媒体",
+        })
+        .replace("{{media_content}}", &media_content);
+    
+    Html(html)
 }

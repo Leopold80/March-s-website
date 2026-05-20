@@ -28,11 +28,5 @@ impl ApiResponse {
     }
 }
 
-/// 媒体类型常量
-pub mod media {
-    pub const PHOTO_DIR: &str = "photos";
-    pub const VIDEO_DIR: &str = "videos";
-}
-
 /// 上传限制 (30GB)
 pub const UPLOAD_MAX_SIZE: usize = 30 * 1024 * 1024 * 1024;

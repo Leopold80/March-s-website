@@ -6,6 +6,7 @@ use std::process::Command;
 
 pub struct MediaService {
     media_dir: PathBuf,
+    cache_dir: PathBuf,
     ffmpeg_available: bool,
 }
 
@@ -13,12 +14,20 @@ impl MediaService {
     pub fn new() -> Self {
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
             .unwrap_or_else(|_| ".".to_string());
+        let media_dir = PathBuf::from(&manifest_dir).join("media");
+        let cache_dir = media_dir.join("cache");
         let ffmpeg_available = Command::new("ffmpeg")
             .arg("-version")
             .output()
             .is_ok();
+        
+        if !cache_dir.exists() {
+            let _ = fs::create_dir_all(&cache_dir);
+        }
+        
         Self {
-            media_dir: PathBuf::from(manifest_dir).join("media"),
+            media_dir,
+            cache_dir,
             ffmpeg_available,
         }
     }
@@ -28,14 +37,14 @@ impl MediaService {
             MediaType::Photo => "photos",
             MediaType::Video => "videos",
         };
-        
+
         let target_dir = self.media_dir.join(subdir);
         fs::create_dir_all(&target_dir).map_err(|e| format!("Failed to create directory: {}", e))?;
-        
+
         let target_path = target_dir.join(filename);
         let mut file = fs::File::create(&target_path).map_err(|e| format!("Failed to create file: {}", e))?;
         file.write_all(data).map_err(|e| format!("Failed to write file: {}", e))?;
-        
+
         if media_type == MediaType::Photo && filename.to_lowercase().ends_with(".heic") && self.ffmpeg_available {
             let jpg_path = target_path.with_extension("jpg");
             let output = Command::new("ffmpeg")
@@ -49,7 +58,7 @@ impl MediaService {
                 return Ok(jpg_path.file_name().unwrap().to_str().unwrap().to_string());
             }
         }
-        
+
         Ok(filename.to_string())
     }
 
@@ -158,9 +167,76 @@ impl MediaService {
             .arg("-y")
             .arg(&jpg_path)
             .output();
-        // 转换成功后删除原 HEIC 文件
         if output.is_ok() {
             let _ = fs::remove_file(heic_path);
         }
+    }
+
+    pub fn get_video_poster_path(&self, filename: &str) -> PathBuf {
+        self.cache_dir.join(format!("poster_{}.jpg", filename))
+    }
+
+    pub fn generate_video_poster(&self, video_path: &PathBuf, filename: &str) -> Result<String, String> {
+        let poster_path = self.get_video_poster_path(filename);
+
+        if poster_path.exists() {
+            return Ok(format!("poster_{}.jpg", filename));
+        }
+
+        let output = Command::new("ffmpeg")
+            .arg("-i")
+            .arg(video_path)
+            .arg("-vf")
+            .arg("thumbnail")
+            .arg("-frames:v")
+            .arg("1")
+            .arg("-y")
+            .arg(&poster_path)
+            .output()
+            .map_err(|e| format!("Failed to extract poster: {}", e))?;
+
+        if output.status.success() {
+            Ok(format!("poster_{}.jpg", filename))
+        } else {
+            Err("Failed to extract video poster".to_string())
+        }
+    }
+
+    pub fn get_thumbnail_path(&self, filename: &str) -> PathBuf {
+        self.cache_dir.join(format!("thumb_{}", filename))
+    }
+
+    pub fn generate_thumbnail(&self, source_path: &PathBuf, filename: &str) -> Result<String, String> {
+        let thumb_path = self.get_thumbnail_path(filename);
+        
+        if thumb_path.exists() {
+            return Ok(format!("thumb_{}", filename));
+        }
+
+        let output = Command::new("ffmpeg")
+            .arg("-i")
+            .arg(source_path)
+            .arg("-vf")
+            .arg("scale=800:-1")
+            .arg("-q:v")
+            .arg("85")
+            .arg("-y")
+            .arg(&thumb_path)
+            .output()
+            .map_err(|e| format!("Failed to generate thumbnail: {}", e))?;
+        
+        if output.status.success() {
+            Ok(format!("thumb_{}", filename))
+        } else {
+            Err("Failed to generate thumbnail".to_string())
+        }
+    }
+
+    pub fn get_photo_path(&self, filename: &str) -> PathBuf {
+        self.media_dir.join("photos").join(filename)
+    }
+
+    pub fn get_video_path(&self, filename: &str) -> PathBuf {
+        self.media_dir.join("videos").join(filename)
     }
 }
