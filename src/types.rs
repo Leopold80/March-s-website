@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 /// 统一的 API 响应结构
 #[derive(Debug, Serialize, Deserialize)]
@@ -8,6 +9,8 @@ pub struct ApiResponse {
     pub message: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<Value>,
 }
 
 impl ApiResponse {
@@ -16,6 +19,16 @@ impl ApiResponse {
             success: true,
             message: Some(message.into()),
             error: None,
+            data: None,
+        }
+    }
+
+    pub fn success_with_data(message: impl Into<String>, data: Value) -> Self {
+        Self {
+            success: true,
+            message: Some(message.into()),
+            error: None,
+            data: Some(data),
         }
     }
 
@@ -24,6 +37,7 @@ impl ApiResponse {
             success: false,
             message: None,
             error: Some(error.into()),
+            data: None,
         }
     }
 }

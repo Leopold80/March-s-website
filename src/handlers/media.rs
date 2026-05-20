@@ -56,7 +56,13 @@ pub async fn media_page() -> Html<String> {
             }
             MediaType::Video => {
                 let poster_path = format!("/video-poster/{}", item.filename);
-                format!(r#"<a href="{}"><img src="{}" alt="{}" loading="lazy"></a>"#, view_link, poster_path, item.filename)
+                let has_compressed = if item.compressed_filename.is_some() { "true" } else { "false" };
+                let compressed_filename = item.compressed_filename.clone().unwrap_or_default();
+                format!(r#"<div class="video-container" data-filename="{}" data-has-compressed="{}" data-compressed="{}">
+                    <a href="/view/video/{}"><img src="{}" alt="{}" loading="lazy"></a>
+                </div>"#,
+                    item.filename, has_compressed, compressed_filename,
+                    item.filename, poster_path, item.filename)
             }
         };
 
@@ -139,7 +145,7 @@ pub async fn rename_media(
 pub async fn get_thumbnail(axum::extract::Path(filename): axum::extract::Path<String>) -> Result<Response<Body>, (StatusCode, String)> {
     let service = MediaService::new();
     let source_path = service.get_photo_path(&filename);
-    
+
     if !source_path.exists() {
         return Err((StatusCode::NOT_FOUND, "File not found".to_string()));
     }
@@ -150,7 +156,7 @@ pub async fn get_thumbnail(axum::extract::Path(filename): axum::extract::Path<St
     };
 
     let thumb_path = service.get_thumbnail_path(&filename);
-    
+
     match tokio::fs::read(&thumb_path).await {
         Ok(data) => {
             let mut response = Response::new(Body::from(Bytes::from(data)));
@@ -193,19 +199,19 @@ pub async fn view_media_page(
     axum::extract::Path((media_type, filename)): axum::extract::Path<(String, String)>,
 ) -> Html<String> {
     let template = include_str!("../../assets/view_media.html");
-    
+
     let media_url = match media_type.as_str() {
         "photo" => format!("/media/photos/{}", filename),
         "video" => format!("/media/videos/{}", filename),
         _ => return Html("Invalid media type".to_string()),
     };
-    
+
     let media_content = match media_type.as_str() {
         "photo" => format!(r#"<div class="media-wrapper"><img src="{}" alt="{}"></div>"#, media_url, filename),
-        "video" => format!(r#"<div class="media-wrapper"><video src="{}" controls preload="metadata"></video></div>"#, media_url),
+        "video" => format!(r#"<div class="media-wrapper"><video src="{}" controls preload="metadata" poster="/video-poster/{}?t={}"></video></div>"#, media_url, filename, chrono::Utc::now().timestamp()),
         _ => String::new(),
     };
-    
+
     let html = template
         .replace("{{media_url}}", &media_url)
         .replace("{{filename}}", &filename)
@@ -215,6 +221,6 @@ pub async fn view_media_page(
             _ => "媒体",
         })
         .replace("{{media_content}}", &media_content);
-    
+
     Html(html)
 }

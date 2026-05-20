@@ -54,17 +54,208 @@
             margin-top: 1rem;
         }
 
-        .header-actions a {
+        .header-actions a, .header-actions button {
             display: inline-block;
             background: rgba(255, 255, 255, 0.2);
             padding: 0.5rem 1rem;
             border-radius: 6px;
             margin: 0 0.25rem;
             transition: background 0.2s;
+            border: none;
+            cursor: pointer;
+            color: white;
+            font-size: 1rem;
         }
 
-        .header-actions a:hover {
+        .header-actions a:hover, .header-actions button:hover {
             background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Settings Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal h2 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .modal-section {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .setting-label {
+            color: #555;
+            font-size: 0.95rem;
+        }
+
+        .setting-desc {
+            color: #888;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Select */
+        .select-box {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            font-size: 0.95rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 0.5rem;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd6;
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .close-modal {
+            float: right;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #888;
+        }
+
+        .close-modal:hover {
+            color: #333;
         }
 
         /* 瀑布流网格布局 */
@@ -193,11 +384,241 @@
             <a href="/">← 返回首页</a>
             <div class="header-actions">
                 <a href="/upload-media">📤 上传媒体</a>
+                <button onclick="openSettings()">⚙️ 设置</button>
             </div>
         </div>
         <div class="media-grid">
             {{media_items}}
         </div>
     </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <span class="close-modal" onclick="closeSettings()">&times;</span>
+            <h2>⚙️ 媒体墙设置</h2>
+
+            <!-- Thumbnail Setting -->
+            <div class="modal-section">
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">🖼️ 启用缩略图</div>
+                        <div class="setting-desc">开启后使用低分辨率缩略图，加快加载速度</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="thumbnailToggle" onchange="saveThumbnailSetting()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Compressed Video Setting -->
+            <div class="modal-section">
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">🎬 使用压缩视频</div>
+                        <div class="setting-desc">开启后显示压缩版本，关闭显示原视频</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="compressedToggle" onchange="saveCompressedSetting()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Video Compression Setting -->
+            <div class="modal-section">
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">🎬 压缩视频</div>
+                        <div class="setting-desc">批量压缩所有视频到指定分辨率</div>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <select class="select-box" id="resolutionSelect">
+                        <option value="1080">1080p (1920x1080)</option>
+                        <option value="720">720p (1280x720)</option>
+                        <option value="480">480p (854x480)</option>
+                        <option value="360">360p (640x360)</option>
+                    </select>
+                </div>
+                <button class="btn-primary" id="compressBtn" onclick="startCompression()">开始压缩</button>
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill">0%</div>
+                    </div>
+                    <div class="progress-text" id="progressText">正在处理视频 0/0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load settings from localStorage
+        function loadSettings() {
+            const thumbnailEnabled = localStorage.getItem('thumbnail_enabled') === 'true';
+            const compressedEnabled = localStorage.getItem('compressed_video_enabled') === 'true';
+            
+            document.getElementById('thumbnailToggle').checked = thumbnailEnabled;
+            document.getElementById('compressedToggle').checked = compressedEnabled;
+            
+            applyThumbnailSetting(thumbnailEnabled);
+            applyCompressedSetting(compressedEnabled);
+        }
+
+        function saveThumbnailSetting() {
+            const enabled = document.getElementById('thumbnailToggle').checked;
+            localStorage.setItem('thumbnail_enabled', enabled);
+            applyThumbnailSetting(enabled);
+        }
+
+        function saveCompressedSetting() {
+            const enabled = document.getElementById('compressedToggle').checked;
+            localStorage.setItem('compressed_video_enabled', enabled);
+            applyCompressedSetting(enabled);
+        }
+
+        function applyThumbnailSetting(enabled) {
+            const images = document.querySelectorAll('.media-grid img');
+            images.forEach(img => {
+                const src = img.getAttribute('src');
+                // Skip video posters - they should always use /video-poster/
+                if (src.includes('/video-poster/')) {
+                    return;
+                }
+                
+                if (enabled) {
+                    if (!src.includes('/thumbnail/')) {
+                        const filename = src.split('/').pop();
+                        img.src = src.replace('/media/photos/', '/thumbnail/');
+                    }
+                } else {
+                    if (src.includes('/thumbnail/')) {
+                        img.src = src.replace('/thumbnail/', '/media/photos/');
+                    }
+                }
+            });
+        }
+
+        function applyCompressedSetting(enabled) {
+            document.querySelectorAll('.video-container').forEach(container => {
+                const link = container.querySelector('a');
+                const toggle = container.querySelector('.video-toggle');
+                
+                const filename = container.dataset.filename;
+                const hasCompressed = container.dataset.hasCompressed === 'true';
+                const compressedFilename = container.dataset.compressed;
+                
+                if (toggle) {
+                    toggle.style.display = hasCompressed ? 'flex' : 'none';
+                }
+                
+                if (enabled && hasCompressed) {
+                    link.href = `/view/video/${compressedFilename}`;
+                } else {
+                    link.href = `/view/video/${filename}`;
+                }
+            });
+        }
+
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('active');
+            loadSettings();
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('settingsModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSettings();
+            }
+        });
+
+        // Video compression
+        let compressionJobId = null;
+        let progressInterval = null;
+
+        async function startCompression() {
+            const resolution = document.getElementById('resolutionSelect').value;
+            const compressBtn = document.getElementById('compressBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+
+            compressBtn.disabled = true;
+            progressContainer.classList.add('active');
+            progressFill.style.width = '0%';
+            progressFill.textContent = '0%';
+            progressText.textContent = '正在准备...';
+
+            try {
+                const response = await fetch(`/api/compress-videos?resolution=${resolution}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    compressionJobId = result.data?.job_id || 'compression_job_1';
+                    progressInterval = setInterval(pollProgress, 1000);
+                } else {
+                    progressText.textContent = '错误：' + (result.error || '未知错误');
+                    compressBtn.disabled = false;
+                }
+            } catch (e) {
+                progressText.textContent = '错误：' + e.message;
+                compressBtn.disabled = false;
+            }
+        }
+
+        async function pollProgress() {
+            if (!compressionJobId) return;
+
+            try {
+                const response = await fetch(`/api/compress-progress/${compressionJobId}`);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const progress = result.data.progress || 0;
+                    const current = result.data.current || 0;
+                    const total = result.data.total || 0;
+
+                    document.getElementById('progressFill').style.width = progress + '%';
+                    document.getElementById('progressFill').textContent = Math.round(progress) + '%';
+                    document.getElementById('progressText').textContent = `正在处理视频 ${current}/${total}`;
+
+                    if (progress >= 100) {
+                        clearInterval(progressInterval);
+                        document.getElementById('progressText').textContent = '压缩完成！';
+                        document.getElementById('compressBtn').disabled = false;
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    }
+                } else if (result.error) {
+                    clearInterval(progressInterval);
+                    document.getElementById('progressText').textContent = '错误：' + result.error;
+                    document.getElementById('compressBtn').disabled = false;
+                }
+            } catch (e) {
+                clearInterval(progressInterval);
+                document.getElementById('progressText').textContent = '错误：' + e.message;
+                document.getElementById('compressBtn').disabled = false;
+            }
+        }
+
+        // Load settings on page load
+        window.addEventListener('DOMContentLoaded', loadSettings);
+
+        // Force reload poster images to bypass cache
+        document.querySelectorAll('.video-container img').forEach(img => {
+            const src = img.getAttribute('src');
+            if (src && src.includes('/video-poster/')) {
+                img.setAttribute('src', src + '?t=' + Date.now());
+            }
+        });
+    </script>
 </body>
 </html>

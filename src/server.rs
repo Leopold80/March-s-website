@@ -21,6 +21,8 @@ pub fn create_app() -> Router {
         .route("/api/logs/{slug}", delete(crate::handlers::delete_log))
         .route("/api/media/{filename}/{media_type}", delete(crate::handlers::delete_media))
         .route("/api/media/{filename}/{media_type}", put(crate::handlers::rename_media))
+        .route("/api/compress-videos", post(crate::handlers::compress_videos))
+        .route("/api/compress-progress/{job_id}", get(crate::handlers::get_compress_progress))
         .nest_service("/media/photos", ServeDir::new("media/photos"))
         .nest_service("/media/videos", ServeDir::new("media/videos"))
         .nest_service("/media/cache", ServeDir::new("media/cache"))

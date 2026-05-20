@@ -3,12 +3,26 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
 
 pub struct MediaService {
     media_dir: PathBuf,
     cache_dir: PathBuf,
     ffmpeg_available: bool,
 }
+
+#[derive(Debug, Clone)]
+pub struct CompressionProgress {
+    pub total: usize,
+    pub current: usize,
+    pub progress: f64,
+    pub error: Option<String>,
+}
+
+pub static COMPRESSION_JOB: Lazy<Mutex<Option<CompressionProgress>>> = Lazy::new(|| {
+    Mutex::new(None)
+});
 
 impl MediaService {
     pub fn new() -> Self {
@@ -121,6 +135,7 @@ impl MediaService {
                             items.push(MediaItem {
                                 filename: path.file_name().unwrap().to_str().unwrap().to_string(),
                                 media_type: MediaType::Photo,
+                                compressed_filename: None,
                             });
                         }
                     }
@@ -133,11 +148,23 @@ impl MediaService {
             if let Ok(entries) = fs::read_dir(&videos_dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
+                    let filename = path.file_name().unwrap().to_str().unwrap().to_string();
+                    
+                    // Skip compressed files
+                    if filename.starts_with("compressed_") {
+                        continue;
+                    }
+                    
                     if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
                         if video_exts.contains(&ext.to_lowercase().as_str()) {
+                            // Find compressed versions
+                            let compressed_files = self.find_compressed_versions(&filename);
+                            let compressed_filename = compressed_files.first().cloned();
+                            
                             items.push(MediaItem {
-                                filename: path.file_name().unwrap().to_str().unwrap().to_string(),
+                                filename: filename.clone(),
                                 media_type: MediaType::Video,
+                                compressed_filename,
                             });
                         }
                     }
@@ -239,4 +266,142 @@ impl MediaService {
     pub fn get_video_path(&self, filename: &str) -> PathBuf {
         self.media_dir.join("videos").join(filename)
     }
+
+    pub fn get_all_videos(&self) -> Vec<MediaItem> {
+        let mut items = Vec::new();
+        let videos_dir = self.media_dir.join("videos");
+
+        if videos_dir.exists() {
+            let video_exts = ["mp4", "webm", "mov"];
+            if let Ok(entries) = fs::read_dir(&videos_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    let filename = path.file_name().unwrap().to_str().unwrap().to_string();
+                    
+                    // Skip compressed files
+                    if filename.starts_with("compressed_") {
+                        continue;
+                    }
+                    
+                    if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+                        if video_exts.contains(&ext.to_lowercase().as_str()) {
+                            let compressed_files = self.find_compressed_versions(&filename);
+                            let compressed_filename = compressed_files.first().cloned();
+                            
+                            items.push(MediaItem {
+                                filename: filename.clone(),
+                                media_type: MediaType::Video,
+                                compressed_filename,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        items
+    }
+
+    pub fn find_compressed_versions(&self, filename: &str) -> Vec<String> {
+        let mut compressed = Vec::new();
+        let videos_dir = self.media_dir.join("videos");
+        let base_name = filename_without_ext(filename);
+
+        if videos_dir.exists() {
+            if let Ok(entries) = fs::read_dir(&videos_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                        if name.starts_with("compressed_") && name.contains(&base_name) {
+                            compressed.push(name.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        compressed.sort();
+        compressed
+    }
+
+    pub fn compress_video(&self, filename: &str, resolution: u32, total: usize, current: usize) -> Result<String, String> {
+        let source_path = self.get_video_path(filename);
+        
+        // Skip if already a compressed file
+        if filename.starts_with("compressed_") {
+            *COMPRESSION_JOB.lock().unwrap() = Some(CompressionProgress {
+                total,
+                current,
+                progress: ((current as f64) / (total as f64)) * 100.0,
+                error: None,
+            });
+            return Ok(filename.to_string());
+        }
+        
+        let output_filename = format!("compressed_{}_{}p.mp4", filename_without_ext(filename), resolution);
+        let output_path = self.media_dir.join("videos").join(&output_filename);
+
+        // Check if already compressed with this resolution
+        if output_path.exists() {
+            *COMPRESSION_JOB.lock().unwrap() = Some(CompressionProgress {
+                total,
+                current,
+                progress: ((current as f64) / (total as f64)) * 100.0,
+                error: None,
+            });
+            return Ok(output_filename);
+        }
+
+        let scale_filter = match resolution {
+            1080 => "scale=-2:1080",
+            720 => "scale=-2:720",
+            480 => "scale=-2:480",
+            360 => "scale=-2:360",
+            _ => "scale=-2:720",
+        };
+
+        let output = Command::new("ffmpeg")
+            .arg("-i")
+            .arg(&source_path)
+            .arg("-vf")
+            .arg(scale_filter)
+            .arg("-c:v")
+            .arg("libx264")
+            .arg("-crf")
+            .arg("23")
+            .arg("-c:a")
+            .arg("aac")
+            .arg("-b:a")
+            .arg("128k")
+            .arg("-y")
+            .arg(&output_path)
+            .output()
+            .map_err(|e| format!("Failed to run ffmpeg: {}", e))?;
+
+        if !output.status.success() {
+            let error_msg = String::from_utf8_lossy(&output.stderr).to_string();
+            *COMPRESSION_JOB.lock().unwrap() = Some(CompressionProgress {
+                total,
+                current,
+                progress: ((current as f64) / (total as f64)) * 100.0,
+                error: Some(format!("ffmpeg error: {}", error_msg)),
+            });
+            return Err(format!("Compression failed: {}", error_msg));
+        }
+
+        *COMPRESSION_JOB.lock().unwrap() = Some(CompressionProgress {
+            total,
+            current,
+            progress: ((current as f64) / (total as f64)) * 100.0,
+            error: None,
+        });
+
+        Ok(output_filename)
+    }
+}
+
+fn filename_without_ext(filename: &str) -> String {
+    std::path::Path::new(filename)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(filename)
+        .to_string()
 }

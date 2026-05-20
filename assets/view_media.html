@@ -62,21 +62,28 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            max-height: 80vh;
         }
 
-        .media-wrapper img,
-        .media-wrapper video {
+        .media-wrapper img {
             max-width: 100%;
-            max-height: 80vh;
+            max-height: 100%;
             width: auto;
             height: auto;
             display: block;
             border-radius: 8px;
+            object-fit: contain;
         }
 
         .media-wrapper video {
-            width: 100%;
-            max-height: none;
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+            object-fit: contain;
+            background: #000;
         }
 
         .media-info {
@@ -106,5 +113,23 @@
             </div>
         </div>
     </div>
+    <script>
+        // Force reload poster images to bypass cache
+        document.addEventListener('DOMContentLoaded', function() {
+            const videos = document.querySelectorAll('video[poster]');
+            videos.forEach(video => {
+                const poster = video.getAttribute('poster');
+                if (poster) {
+                    // Add timestamp to bypass cache
+                    video.setAttribute('poster', poster + (poster.includes('?') ? '&' : '?') + 'reload=' + Date.now());
+                    
+                    // Add error handler to hide broken poster
+                    video.addEventListener('error', function() {
+                        this.removeAttribute('poster');
+                    });
+                }
+            });
+        });
+    </script>
 </body>
 </html>
